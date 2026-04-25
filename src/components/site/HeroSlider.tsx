@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-shim";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronLeft, ChevronRight, LogIn, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";

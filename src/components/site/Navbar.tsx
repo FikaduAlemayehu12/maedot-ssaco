@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-shim";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ShieldCheck } from "lucide-react";
 import logo from "@/assets/logo.png";
