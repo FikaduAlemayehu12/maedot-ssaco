@@ -32,14 +32,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Maedot SACCO — secure savings, fair credit, and modern digit" },
+      { name: "description", content: "Maedot Mirror clones and migrates a digital hub application, preserving all modules, data, and functionality." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Maedot SACCO — secure savings, fair credit, and modern digit" },
+      { property: "og:description", content: "Maedot Mirror clones and migrates a digital hub application, preserving all modules, data, and functionality." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Maedot SACCO — secure savings, fair credit, and modern digit" },
+      { name: "twitter:description", content: "Maedot Mirror clones and migrates a digital hub application, preserving all modules, data, and functionality." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/EZ8iXc1ODSeFbLLGo7YN6Nv9KCn2/social-images/social-1777110109353-maedot_SACO_logo.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/EZ8iXc1ODSeFbLLGo7YN6Nv9KCn2/social-images/social-1777110109353-maedot_SACO_logo.webp" },
     ],
     links: [
       {
