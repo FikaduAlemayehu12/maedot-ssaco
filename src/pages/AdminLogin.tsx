@@ -16,19 +16,51 @@ const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const allowedAdminEmail = "abrham@maedot.com";
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate("/admin", { replace: true });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      if (data.session.user.email?.toLowerCase() !== allowedAdminEmail) {
+        await supabase.auth.signOut();
+        return;
+      }
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.session.user.id);
+      if ((roles ?? []).some((r: { role: string }) => r.role === "admin")) navigate("/admin", { replace: true });
+      else await supabase.auth.signOut();
     });
   }, [navigate]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (error || !data.user) {
+      setLoading(false);
+      toast({ title: t.login.failed, description: error?.message ?? "Invalid login", variant: "destructive" });
+      return;
+    }
+    if (data.user.email?.toLowerCase() !== allowedAdminEmail) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast({ title: t.login.failed, description: "This account is not authorized for the staff portal.", variant: "destructive" });
+      return;
+    }
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id);
+    if (!(roles ?? []).some((r: { role: string }) => r.role === "admin")) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      toast({ title: t.login.failed, description: "Admin role is required.", variant: "destructive" });
+      return;
+    }
     setLoading(false);
-    if (error) { toast({ title: t.login.failed, description: error.message, variant: "destructive" }); return; }
     toast({ title: t.login.welcomeBack, description: t.login.redirect });
     navigate("/admin", { replace: true });
   };
