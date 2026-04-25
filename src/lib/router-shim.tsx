@@ -18,7 +18,7 @@ type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
 export const Link = forwardRef<HTMLAnchorElement, LinkProps>(({ to, replace, children, ...rest }, ref) => {
   // Use TanStack Link with type-loose 'to' since dynamic routes are simple here.
   return (
-    // @ts-expect-error - dynamic route strings
+    // @ts-ignore - dynamic route strings
     <TSLink ref={ref} to={to} replace={replace} {...rest}>
       {children}
     </TSLink>
@@ -36,7 +36,7 @@ type NavLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "className" | 
 
 export const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(({ to, className, children, end, ...rest }, ref) => {
   return (
-    // @ts-expect-error - dynamic route strings
+    // @ts-ignore - dynamic route strings
     <TSLink
       ref={ref}
       to={to}
@@ -61,7 +61,7 @@ export const useNavigate = () => {
       if (typeof window !== "undefined") window.history.go(to);
       return;
     }
-    // @ts-expect-error - dynamic route strings
+    // @ts-ignore - dynamic route strings
     nav({ to, replace: opts?.replace });
   };
 };
