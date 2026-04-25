@@ -84,3 +84,5 @@ export const useSearchParams = (): [URLSearchParams, (next: URLSearchParams | Re
   };
   return [params, setSearchParams];
 };
+
+export type { NavLinkProps };
