@@ -14,16 +14,265 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      registrations: {
+        Row: {
+          account_number: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          annual_income: number | null
+          branch: string | null
+          created_at: string
+          customer_number: string
+          date_of_birth: string
+          education: string | null
+          email: string
+          full_name: string
+          gender: string
+          heir_full_name: string | null
+          heir_phone: string | null
+          heir_relationship: string | null
+          heir2_full_name: string | null
+          heir2_phone: string | null
+          heir2_relationship: string | null
+          id: string
+          id_back_url: string | null
+          id_document_url: string | null
+          id_front_url: string | null
+          id_number: string
+          id_type: string
+          live_photo_url: string | null
+          marital_status: string | null
+          monthly_income: number | null
+          mothers_name: string | null
+          nationality: string
+          occupation: string | null
+          optional_photo_url: string | null
+          phone: string
+          photo_url: string | null
+          referral_code: string | null
+          region: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          signature_data_url: string | null
+          status: Database["public"]["Enums"]["registration_status"]
+          tin_number: string | null
+          updated_at: string
+          witness_1: string | null
+          witness_2: string | null
+          witness_3: string | null
+        }
+        Insert: {
+          account_number: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          annual_income?: number | null
+          branch?: string | null
+          created_at?: string
+          customer_number: string
+          date_of_birth: string
+          education?: string | null
+          email: string
+          full_name: string
+          gender: string
+          heir_full_name?: string | null
+          heir_phone?: string | null
+          heir_relationship?: string | null
+          heir2_full_name?: string | null
+          heir2_phone?: string | null
+          heir2_relationship?: string | null
+          id?: string
+          id_back_url?: string | null
+          id_document_url?: string | null
+          id_front_url?: string | null
+          id_number: string
+          id_type: string
+          live_photo_url?: string | null
+          marital_status?: string | null
+          monthly_income?: number | null
+          mothers_name?: string | null
+          nationality: string
+          occupation?: string | null
+          optional_photo_url?: string | null
+          phone: string
+          photo_url?: string | null
+          referral_code?: string | null
+          region: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          signature_data_url?: string | null
+          status?: Database["public"]["Enums"]["registration_status"]
+          tin_number?: string | null
+          updated_at?: string
+          witness_1?: string | null
+          witness_2?: string | null
+          witness_3?: string | null
+        }
+        Update: {
+          account_number?: string
+          account_type?: Database["public"]["Enums"]["account_type"]
+          annual_income?: number | null
+          branch?: string | null
+          created_at?: string
+          customer_number?: string
+          date_of_birth?: string
+          education?: string | null
+          email?: string
+          full_name?: string
+          gender?: string
+          heir_full_name?: string | null
+          heir_phone?: string | null
+          heir_relationship?: string | null
+          heir2_full_name?: string | null
+          heir2_phone?: string | null
+          heir2_relationship?: string | null
+          id?: string
+          id_back_url?: string | null
+          id_document_url?: string | null
+          id_front_url?: string | null
+          id_number?: string
+          id_type?: string
+          live_photo_url?: string | null
+          marital_status?: string | null
+          monthly_income?: number | null
+          mothers_name?: string | null
+          nationality?: string
+          occupation?: string | null
+          optional_photo_url?: string | null
+          phone?: string
+          photo_url?: string | null
+          referral_code?: string | null
+          region?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          signature_data_url?: string | null
+          status?: Database["public"]["Enums"]["registration_status"]
+          tin_number?: string | null
+          updated_at?: string
+          witness_1?: string | null
+          witness_2?: string | null
+          witness_3?: string | null
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          address: string | null
+          email: string | null
+          id: number
+          logo_url: string | null
+          motto_am: string
+          motto_en: string
+          org_name_am: string
+          org_name_en: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          email?: string | null
+          id?: number
+          logo_url?: string | null
+          motto_am?: string
+          motto_en?: string
+          org_name_am?: string
+          org_name_en?: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          email?: string | null
+          id?: number
+          logo_url?: string | null
+          motto_am?: string
+          motto_en?: string
+          org_name_am?: string
+          org_name_en?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          referral_code: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          referral_code?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          referral_code?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_referral_code: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      submit_registration: {
+        Args: { payload: Json }
+        Returns: {
+          account_number: string
+          customer_number: string
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      account_type: "saving" | "cheque" | "mobile_wallet"
+      app_role: "admin" | "checker" | "maker"
+      registration_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +399,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_type: ["saving", "cheque", "mobile_wallet"],
+      app_role: ["admin", "checker", "maker"],
+      registration_status: ["pending", "approved", "rejected"],
+    },
   },
 } as const
