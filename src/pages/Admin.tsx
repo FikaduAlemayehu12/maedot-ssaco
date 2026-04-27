@@ -10,12 +10,16 @@ import { toast } from "@/hooks/use-toast";
 import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
+  LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { downloadRegistrationPdf, openRegistrationPdf, type FullRegistration } from "@/lib/registrationPdf";
 import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
+import {
+  DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
+} from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
   status: "pending" | "approved" | "rejected";
@@ -23,7 +27,14 @@ type Registration = FullRegistration & {
 };
 
 type Tab = "pending" | "approved" | "rejected" | "all";
-type Section = "registrations" | "staff";
+type Section =
+  | "dashboard"
+  | "registrations"
+  | "members"
+  | "savings"
+  | "loans"
+  | "finance"
+  | "staff";
 
 interface StaffProfile {
   id: string;
@@ -44,12 +55,13 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Registration[]>([]);
   const [tab, setTab] = useState<Tab>("pending");
-  const [section, setSection] = useState<Section>("registrations");
+  const [section, setSection] = useState<Section>("dashboard");
   const [q, setQ] = useState("");
   const [acting, setActing] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [newStaff, setNewStaff] = useState({ full_name: "", email: "", phone: "", password: "", role: "checker" as "admin" | "checker" | "maker" });
@@ -62,8 +74,10 @@ const Admin = () => {
       if (!mounted) return;
       if (!data.session) { navigate("/admin/login", { replace: true }); return; }
       setEmail(data.session.user.email ?? "");
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.session.user.id);
-      setIsAdmin((roles ?? []).some((r: any) => r.role === "admin"));
+      const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", data.session.user.id);
+      const list = (rolesData ?? []).map((r: any) => r.role as string);
+      setRoles(list);
+      setIsAdmin(list.includes("admin"));
       load();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
