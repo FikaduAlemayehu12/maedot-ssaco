@@ -195,8 +195,21 @@ const Admin = () => {
             </div>
           </Link>
         </div>
-        <nav className="p-3 space-y-1 flex-1">
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+          <SidebarItem icon={<LayoutDashboard className="size-4" />} active={section === "dashboard"} label="Dashboard" onClick={() => setSection("dashboard")} />
           <SidebarItem icon={<Users className="size-4" />} active={section === "registrations"} label={t.admin.tabs.registrations} onClick={() => setSection("registrations")} />
+          {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","maker","checker"].includes(r))) && (
+            <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "members"} label="Members" onClick={() => setSection("members")} />
+          )}
+          {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<Wallet className="size-4" />} active={section === "savings"} label="Savings" onClick={() => setSection("savings")} />
+          )}
+          {(isAdmin || roles.includes("loan_officer") || roles.includes("finance_officer") || roles.includes("cashier")) && (
+            <SidebarItem icon={<HandCoins className="size-4" />} active={section === "loans"} label="Loans" onClick={() => setSection("loans")} />
+          )}
+          {(isAdmin || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<BookOpen className="size-4" />} active={section === "finance"} label="Finance / GL" onClick={() => setSection("finance")} />
+          )}
           {isAdmin && (
             <SidebarItem icon={<ShieldCheck className="size-4" />} active={section === "staff"} label={t.admin.tabs.staff} onClick={() => setSection("staff")} />
           )}
@@ -221,10 +234,22 @@ const Admin = () => {
             <img src={logo} alt="" className="h-9 w-9 object-contain bg-muted rounded-lg p-0.5 lg:hidden" />
             <div className="min-w-0">
               <h1 className="font-display text-lg sm:text-2xl font-bold text-secondary truncate">
-                {section === "registrations" ? t.admin.title : t.admin.staffMgmt}
+                {section === "registrations" ? t.admin.title
+                  : section === "staff" ? t.admin.staffMgmt
+                  : section === "dashboard" ? "Dashboard"
+                  : section === "members" ? "Members"
+                  : section === "savings" ? "Savings"
+                  : section === "loans" ? "Loans"
+                  : "Finance / General Ledger"}
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {section === "registrations" ? t.admin.subtitle : t.admin.staffMgmtDesc}
+                {section === "registrations" ? t.admin.subtitle
+                  : section === "staff" ? t.admin.staffMgmtDesc
+                  : section === "dashboard" ? "Overview of SACCO performance"
+                  : section === "members" ? "Manage member accounts"
+                  : section === "savings" ? "Savings accounts & transactions"
+                  : section === "loans" ? "Loan applications & repayments"
+                  : "Chart of accounts & journal entries"}
               </p>
             </div>
           </div>
@@ -238,18 +263,28 @@ const Admin = () => {
 
         {/* Mobile section tabs */}
         <div className="lg:hidden border-b bg-card px-3 py-2 flex gap-1 overflow-x-auto">
-          <button onClick={() => setSection("registrations")} className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${section === "registrations" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-            {t.admin.tabs.registrations}
-          </button>
-          {isAdmin && (
-            <button onClick={() => setSection("staff")} className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${section === "staff" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-              {t.admin.tabs.staff}
+          {([
+            ["dashboard","Dashboard"],
+            ["registrations", t.admin.tabs.registrations],
+            ["members","Members"],
+            ["savings","Savings"],
+            ["loans","Loans"],
+            ["finance","Finance"],
+            ...(isAdmin ? [["staff", t.admin.tabs.staff] as const] : []),
+          ] as const).map(([s, label]) => (
+            <button key={s} onClick={() => setSection(s as Section)} className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${section === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+              {label}
             </button>
-          )}
+          ))}
           <Link to="/" className="ml-auto text-xs text-primary self-center px-2">{t.common.backToSite}</Link>
         </div>
 
         <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+          {section === "dashboard" && <DashboardModule />}
+          {section === "members" && <MembersModule />}
+          {section === "savings" && <SavingsModule />}
+          {section === "loans" && <LoansModule />}
+          {section === "finance" && <FinanceModule />}
           {section === "registrations" && (
             <>
               {/* Stat cards */}
