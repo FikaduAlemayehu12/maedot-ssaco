@@ -271,7 +271,16 @@ export type Database = {
     }
     Enums: {
       account_type: "saving" | "cheque" | "mobile_wallet"
-      app_role: "admin" | "checker" | "maker"
+      app_role:
+        | "admin"
+        | "checker"
+        | "maker"
+        | "hr_manager"
+        | "finance_officer"
+        | "inventory_clerk"
+        | "cashier"
+        | "loan_officer"
+        | "savings_officer"
       registration_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -401,7 +410,17 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["saving", "cheque", "mobile_wallet"],
-      app_role: ["admin", "checker", "maker"],
+      app_role: [
+        "admin",
+        "checker",
+        "maker",
+        "hr_manager",
+        "finance_officer",
+        "inventory_clerk",
+        "cashier",
+        "loan_officer",
+        "savings_officer",
+      ],
       registration_status: ["pending", "approved", "rejected"],
     },
   },
