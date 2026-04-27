@@ -10,12 +10,16 @@ import { toast } from "@/hooks/use-toast";
 import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
+  LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { downloadRegistrationPdf, openRegistrationPdf, type FullRegistration } from "@/lib/registrationPdf";
 import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
+import {
+  DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
+} from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
   status: "pending" | "approved" | "rejected";
@@ -23,7 +27,14 @@ type Registration = FullRegistration & {
 };
 
 type Tab = "pending" | "approved" | "rejected" | "all";
-type Section = "registrations" | "staff";
+type Section =
+  | "dashboard"
+  | "registrations"
+  | "members"
+  | "savings"
+  | "loans"
+  | "finance"
+  | "staff";
 
 interface StaffProfile {
   id: string;
@@ -44,12 +55,13 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Registration[]>([]);
   const [tab, setTab] = useState<Tab>("pending");
-  const [section, setSection] = useState<Section>("registrations");
+  const [section, setSection] = useState<Section>("dashboard");
   const [q, setQ] = useState("");
   const [acting, setActing] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [staff, setStaff] = useState<StaffProfile[]>([]);
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [newStaff, setNewStaff] = useState({ full_name: "", email: "", phone: "", password: "", role: "checker" as "admin" | "checker" | "maker" });
@@ -62,8 +74,10 @@ const Admin = () => {
       if (!mounted) return;
       if (!data.session) { navigate("/admin/login", { replace: true }); return; }
       setEmail(data.session.user.email ?? "");
-      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.session.user.id);
-      setIsAdmin((roles ?? []).some((r: any) => r.role === "admin"));
+      const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", data.session.user.id);
+      const list = (rolesData ?? []).map((r: any) => r.role as string);
+      setRoles(list);
+      setIsAdmin(list.includes("admin"));
       load();
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -181,8 +195,21 @@ const Admin = () => {
             </div>
           </Link>
         </div>
-        <nav className="p-3 space-y-1 flex-1">
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+          <SidebarItem icon={<LayoutDashboard className="size-4" />} active={section === "dashboard"} label="Dashboard" onClick={() => setSection("dashboard")} />
           <SidebarItem icon={<Users className="size-4" />} active={section === "registrations"} label={t.admin.tabs.registrations} onClick={() => setSection("registrations")} />
+          {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","maker","checker"].includes(r))) && (
+            <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "members"} label="Members" onClick={() => setSection("members")} />
+          )}
+          {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<Wallet className="size-4" />} active={section === "savings"} label="Savings" onClick={() => setSection("savings")} />
+          )}
+          {(isAdmin || roles.includes("loan_officer") || roles.includes("finance_officer") || roles.includes("cashier")) && (
+            <SidebarItem icon={<HandCoins className="size-4" />} active={section === "loans"} label="Loans" onClick={() => setSection("loans")} />
+          )}
+          {(isAdmin || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<BookOpen className="size-4" />} active={section === "finance"} label="Finance / GL" onClick={() => setSection("finance")} />
+          )}
           {isAdmin && (
             <SidebarItem icon={<ShieldCheck className="size-4" />} active={section === "staff"} label={t.admin.tabs.staff} onClick={() => setSection("staff")} />
           )}
@@ -207,10 +234,22 @@ const Admin = () => {
             <img src={logo} alt="" className="h-9 w-9 object-contain bg-muted rounded-lg p-0.5 lg:hidden" />
             <div className="min-w-0">
               <h1 className="font-display text-lg sm:text-2xl font-bold text-secondary truncate">
-                {section === "registrations" ? t.admin.title : t.admin.staffMgmt}
+                {section === "registrations" ? t.admin.title
+                  : section === "staff" ? t.admin.staffMgmt
+                  : section === "dashboard" ? "Dashboard"
+                  : section === "members" ? "Members"
+                  : section === "savings" ? "Savings"
+                  : section === "loans" ? "Loans"
+                  : "Finance / General Ledger"}
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {section === "registrations" ? t.admin.subtitle : t.admin.staffMgmtDesc}
+                {section === "registrations" ? t.admin.subtitle
+                  : section === "staff" ? t.admin.staffMgmtDesc
+                  : section === "dashboard" ? "Overview of SACCO performance"
+                  : section === "members" ? "Manage member accounts"
+                  : section === "savings" ? "Savings accounts & transactions"
+                  : section === "loans" ? "Loan applications & repayments"
+                  : "Chart of accounts & journal entries"}
               </p>
             </div>
           </div>
@@ -224,18 +263,28 @@ const Admin = () => {
 
         {/* Mobile section tabs */}
         <div className="lg:hidden border-b bg-card px-3 py-2 flex gap-1 overflow-x-auto">
-          <button onClick={() => setSection("registrations")} className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${section === "registrations" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-            {t.admin.tabs.registrations}
-          </button>
-          {isAdmin && (
-            <button onClick={() => setSection("staff")} className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${section === "staff" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-              {t.admin.tabs.staff}
+          {([
+            ["dashboard","Dashboard"],
+            ["registrations", t.admin.tabs.registrations],
+            ["members","Members"],
+            ["savings","Savings"],
+            ["loans","Loans"],
+            ["finance","Finance"],
+            ...(isAdmin ? [["staff", t.admin.tabs.staff] as const] : []),
+          ] as const).map(([s, label]) => (
+            <button key={s} onClick={() => setSection(s as Section)} className={`px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap ${section === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+              {label}
             </button>
-          )}
+          ))}
           <Link to="/" className="ml-auto text-xs text-primary self-center px-2">{t.common.backToSite}</Link>
         </div>
 
         <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+          {section === "dashboard" && <DashboardModule />}
+          {section === "members" && <MembersModule />}
+          {section === "savings" && <SavingsModule />}
+          {section === "loans" && <LoansModule />}
+          {section === "finance" && <FinanceModule />}
           {section === "registrations" && (
             <>
               {/* Stat cards */}

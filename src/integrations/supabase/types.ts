@@ -14,6 +14,251 @@ export type Database = {
   }
   public: {
     Tables: {
+      gl_accounts: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          id: string
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gl_entries: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit: number
+          debit: number
+          description: string | null
+          entry_date: string
+          id: string
+          posted_by: string | null
+          reference: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          entry_date?: string
+          id?: string
+          posted_by?: string | null
+          reference?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          entry_date?: string
+          id?: string
+          posted_by?: string | null
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gl_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "gl_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_repayments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          id: string
+          interest_portion: number
+          loan_id: string
+          paid_at: string | null
+          posted_by: string | null
+          principal_portion: number
+          reference: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          interest_portion?: number
+          loan_id: string
+          paid_at?: string | null
+          posted_by?: string | null
+          principal_portion?: number
+          reference?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          interest_portion?: number
+          loan_id?: string
+          paid_at?: string | null
+          posted_by?: string | null
+          principal_portion?: number
+          reference?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_repayments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loans: {
+        Row: {
+          approved_by: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          disbursed_at: string | null
+          id: string
+          interest_rate: number
+          loan_number: string
+          member_id: string
+          outstanding_balance: number
+          principal: number
+          purpose: string | null
+          status: string
+          term_months: number
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          disbursed_at?: string | null
+          id?: string
+          interest_rate?: number
+          loan_number: string
+          member_id: string
+          outstanding_balance?: number
+          principal: number
+          purpose?: string | null
+          status?: string
+          term_months: number
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          disbursed_at?: string | null
+          id?: string
+          interest_rate?: number
+          loan_number?: string
+          member_id?: string
+          outstanding_balance?: number
+          principal?: number
+          purpose?: string | null
+          status?: string
+          term_months?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          address: string | null
+          created_at: string
+          created_by: string | null
+          date_of_birth: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          member_number: string
+          phone: string | null
+          region: string | null
+          registration_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          member_number: string
+          phone?: string | null
+          region?: string | null
+          registration_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          member_number?: string
+          phone?: string | null
+          region?: string | null
+          registration_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registrations: {
         Row: {
           account_number: string
@@ -152,6 +397,100 @@ export type Database = {
         }
         Relationships: []
       }
+      savings_accounts: {
+        Row: {
+          account_number: string
+          balance: number
+          created_at: string
+          id: string
+          interest_rate: number
+          member_id: string
+          opened_at: string
+          product: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_number: string
+          balance?: number
+          created_at?: string
+          id?: string
+          interest_rate?: number
+          member_id: string
+          opened_at?: string
+          product?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string
+          balance?: number
+          created_at?: string
+          id?: string
+          interest_rate?: number
+          member_id?: string
+          opened_at?: string
+          product?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_accounts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      savings_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          id: string
+          note: string | null
+          posted_at: string
+          posted_by: string | null
+          reference: string | null
+          running_balance: number | null
+          txn_type: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          posted_at?: string
+          posted_by?: string | null
+          reference?: string | null
+          running_balance?: number | null
+          txn_type: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          posted_at?: string
+          posted_by?: string | null
+          reference?: string | null
+          running_balance?: number | null
+          txn_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "savings_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           address: string | null
@@ -271,7 +610,16 @@ export type Database = {
     }
     Enums: {
       account_type: "saving" | "cheque" | "mobile_wallet"
-      app_role: "admin" | "checker" | "maker"
+      app_role:
+        | "admin"
+        | "checker"
+        | "maker"
+        | "hr_manager"
+        | "finance_officer"
+        | "inventory_clerk"
+        | "cashier"
+        | "loan_officer"
+        | "savings_officer"
       registration_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -401,7 +749,17 @@ export const Constants = {
   public: {
     Enums: {
       account_type: ["saving", "cheque", "mobile_wallet"],
-      app_role: ["admin", "checker", "maker"],
+      app_role: [
+        "admin",
+        "checker",
+        "maker",
+        "hr_manager",
+        "finance_officer",
+        "inventory_clerk",
+        "cashier",
+        "loan_officer",
+        "savings_officer",
+      ],
       registration_status: ["pending", "approved", "rejected"],
     },
   },
