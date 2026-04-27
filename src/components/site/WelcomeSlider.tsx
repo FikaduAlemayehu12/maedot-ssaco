@@ -157,17 +157,6 @@ export const WelcomeSlider = () => {
             <ChevronRight className="size-5" />
           </button>
 
-          {/* Dots */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-            {SLIDES.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setIndex(i)}
-                aria-label={`Go to slide ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all ${i === index ? "w-8 bg-primary" : "w-3 bg-secondary-foreground/40 hover:bg-secondary-foreground/70"}`}
-              />
-            ))}
-          </div>
         </div>
       </div>
     </section>
