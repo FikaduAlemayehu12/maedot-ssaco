@@ -196,18 +196,6 @@ export const HeroSlider = () => {
         <ChevronRight className="size-5" />
       </button>
 
-      {/* Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setIndex(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            className={`h-1.5 rounded-full transition-all ${i === index ? "w-10 bg-primary" : "w-4 bg-secondary-foreground/40 hover:bg-secondary-foreground/70"}`}
-          />
-        ))}
-      </div>
-
       {/* Slide counter */}
       <div className="absolute bottom-8 right-6 lg:right-10 z-20 font-display text-secondary-foreground/70 text-sm">
         <span className="text-primary text-lg font-bold">{String(index + 1).padStart(2, "0")}</span>
