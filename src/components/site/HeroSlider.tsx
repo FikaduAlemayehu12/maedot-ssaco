@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronLeft, ChevronRight, LogIn, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
-import slide1 from "@/assets/slides/welcome.jpg";
+import maedotWelcome from "@/assets/slides/maedot-welcome.png";
 import slide2 from "@/assets/slides/savings.jpg";
 import slide3 from "@/assets/slides/credit.jpg";
 import slide4 from "@/assets/slides/community.jpg";
@@ -25,16 +25,16 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    image: slide1,
+    image: maedotWelcome,
     eyebrow: "Welcome · እንኳን ደህና መጡ",
-    title: <>Welcome to <span className="text-gradient-gold">Maedot</span><br />Transforming Together</>,
-    subtitle: "Ethiopia's modern saving & credit cooperative — built on trust, powered by technology.",
-    amharic: "ማዕዶት — በጋራ እንሻገር",
+    title: <>Welcome to <span className="text-gradient-gold">Maedot SSACCO</span></>,
+    subtitle: "Saving and Credit Cooperative Society — Your Saving, Their Future.",
+    amharic: "ማዕዶት ንንዘብ ቁጠባና ብድር መሰረታዊ የኅብረት ሥራ ማኅበር",
   },
   {
     image: slide2,
     eyebrow: "Savings · ቁጠባ",
-    title: <>Save smart.<br /><span className="text-gradient-gold">Grow stronger.</span></>,
+    title: <>Save smart. <span className="text-gradient-gold">Grow stronger.</span></>,
     subtitle: "Up to 12% annual returns on your savings, with full transparency and member dividends.",
     amharic: "ቁጠባዎ — ብልጥ ምርጫ",
   },
@@ -48,7 +48,7 @@ const slides: Slide[] = [
   {
     image: slide4,
     eyebrow: "Community · ማህበረሰብ",
-    title: <>Owned by members,<br /><span className="text-gradient-gold">built for community.</span></>,
+    title: <>Owned by members, <span className="text-gradient-gold">built for community.</span></>,
     subtitle: "A cooperative where every member is an owner — your prosperity is our purpose.",
     amharic: "የማህበረሰብ ባንክ",
   },
@@ -76,7 +76,7 @@ const slides: Slide[] = [
   {
     image: slide8,
     eyebrow: "Agriculture · ግብርና",
-    title: <>Rooted in Ethiopia,<br /><span className="text-gradient-gold">growing with you.</span></>,
+    title: <>Rooted in Ethiopia, <span className="text-gradient-gold">growing with you.</span></>,
     subtitle: "Seasonal harvest loans, equipment finance and crop insurance for Ethiopian farmers.",
     amharic: "ለግብርና የተዘጋጀ የገንዘብ መፍትሄ",
   },
@@ -106,62 +106,79 @@ export const HeroSlider = () => {
 
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(next, 6500);
+    const t = setInterval(next, 5000);
     return () => clearInterval(t);
   }, [paused, next]);
+
+  const current = slides[index];
 
   return (
     <section
       id="home"
-      className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-secondary"
+      className="relative min-h-[100svh] w-full overflow-hidden bg-secondary"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Slides */}
-      {slides.map((s, i) => (
-        <div
-          key={i}
-          className={`absolute inset-0 transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-          aria-hidden={i !== index}
-        >
-          <img
-            src={s.image}
-            alt=""
-            width={1920}
-            height={1080}
-            loading={i === 0 ? "eager" : "lazy"}
-            className={`absolute inset-0 w-full h-full object-cover ${i === index ? "scale-105" : "scale-100"} transition-transform duration-[8000ms] ease-out`}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-secondary/90 via-secondary/70 to-secondary/30" />
-          <div className="absolute inset-0 bg-gradient-to-t from-secondary/80 via-transparent to-transparent" />
-        </div>
-      ))}
+      {/* Ambient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-secondary via-secondary to-secondary/80" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
 
       {/* Content */}
-      <div className="relative z-10 h-full container flex flex-col justify-center pt-28 pb-24 sm:pt-32 sm:pb-28">
-        <div className="max-w-2xl text-secondary-foreground text-left">
-          {slides.map((s, i) => (
-            <div
-              key={i}
-              className={`transition-all duration-700 ${i === index ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 absolute pointer-events-none"}`}
-            >
-              {i === index && (
-                <>
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/15 backdrop-blur border border-primary/30 mb-5">
-                    <Sparkles className="size-3.5 text-primary" />
-                    <span className="text-xs font-semibold tracking-wide text-primary">{s.eyebrow}</span>
-                  </div>
-                  <h1 className="text-4xl sm:text-5xl lg:text-7xl font-display font-bold leading-[1.05] mb-5">
-                    {s.title}
-                  </h1>
-                  <p className="font-display italic text-primary text-lg sm:text-xl mb-3">{s.amharic}</p>
-                  <p className="text-base sm:text-lg text-secondary-foreground/85 max-w-xl mb-8">{s.subtitle}</p>
-                </>
-              )}
-            </div>
-          ))}
+      <div className="relative z-10 container pt-28 pb-16 sm:pt-32 sm:pb-20 min-h-[100svh] flex flex-col items-center justify-center text-center">
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/15 backdrop-blur border border-primary/30 mb-6 animate-fade-up">
+          <Sparkles className="size-3.5 text-primary" />
+          <span className="text-xs font-semibold tracking-wide text-primary">{current.eyebrow}</span>
+        </div>
 
-          <div className="flex flex-wrap gap-3">
+        {/* Centered hero image */}
+        <div className="relative mx-auto mb-8 w-full max-w-2xl animate-fade-up">
+          <div className="relative aspect-square sm:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-elegant border border-primary/20 bg-secondary-foreground/5">
+            {slides.map((s, i) => (
+              <img
+                key={i}
+                src={s.image}
+                alt=""
+                width={1200}
+                height={1200}
+                loading={i === 0 ? "eager" : "lazy"}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                  i === index ? "opacity-100" : "opacity-0"
+                }`}
+                aria-hidden={i !== index}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-t from-secondary/40 via-transparent to-transparent pointer-events-none" />
+          </div>
+
+          {/* Controls */}
+          <button
+            onClick={prev}
+            aria-label="Previous slide"
+            className="absolute -left-2 sm:-left-5 top-1/2 -translate-y-1/2 z-20 size-11 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/20 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <button
+            onClick={next}
+            aria-label="Next slide"
+            className="absolute -right-2 sm:-right-5 top-1/2 -translate-y-1/2 z-20 size-11 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/20 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
+          >
+            <ChevronRight className="size-5" />
+          </button>
+        </div>
+
+        {/* Centered text */}
+        <div className="max-w-3xl text-secondary-foreground animate-fade-up">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.08] mb-4">
+            {current.title}
+          </h1>
+          <p className="font-display italic text-primary text-lg sm:text-2xl mb-3">{current.amharic}</p>
+          <p className="text-base sm:text-lg text-secondary-foreground/85 max-w-2xl mx-auto mb-8">
+            {current.subtitle}
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-3">
             <Button variant="hero" size="xl" asChild>
               <Link to="/register">Register Now <ArrowRight className="size-4" /></Link>
             </Button>
@@ -173,34 +190,11 @@ export const HeroSlider = () => {
             </Button>
           </div>
 
-          <div className="mt-8 flex items-center gap-5 text-sm text-secondary-foreground/70">
+          <div className="mt-8 flex items-center justify-center gap-5 text-sm text-secondary-foreground/70">
             <div className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /> NBE-aligned</div>
             <a href={`tel:${settings.phone}`} className="hover:text-primary font-semibold">📞 {settings.phone}</a>
           </div>
         </div>
-      </div>
-
-      {/* Controls */}
-      <button
-        onClick={prev}
-        aria-label="Previous slide"
-        className="absolute left-4 lg:left-8 top-1/2 -translate-y-1/2 z-20 size-12 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/20 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
-      >
-        <ChevronLeft className="size-5" />
-      </button>
-      <button
-        onClick={next}
-        aria-label="Next slide"
-        className="absolute right-4 lg:right-8 top-1/2 -translate-y-1/2 z-20 size-12 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/20 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
-      >
-        <ChevronRight className="size-5" />
-      </button>
-
-      {/* Slide counter */}
-      <div className="absolute bottom-8 right-6 lg:right-10 z-20 font-display text-secondary-foreground/70 text-sm">
-        <span className="text-primary text-lg font-bold">{String(index + 1).padStart(2, "0")}</span>
-        <span className="mx-1">/</span>
-        {String(slides.length).padStart(2, "0")}
       </div>
     </section>
   );
