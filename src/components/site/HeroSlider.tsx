@@ -133,7 +133,7 @@ export const HeroSlider = () => {
 
         {/* Centered hero image */}
         <div className="relative mx-auto mb-8 w-full max-w-2xl animate-fade-up">
-          <div className="relative aspect-square sm:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-elegant border border-primary/20 bg-secondary-foreground/5">
+          <div className="relative mx-auto aspect-square sm:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-elegant border border-primary/20 bg-secondary-foreground/5 flex items-center justify-center">
             {slides.map((s, i) => (
               <img
                 key={i}
@@ -142,7 +142,7 @@ export const HeroSlider = () => {
                 width={1200}
                 height={1200}
                 loading={i === 0 ? "eager" : "lazy"}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                className={`absolute inset-0 m-auto w-full h-full object-contain object-center transition-opacity duration-1000 ${
                   i === index ? "opacity-100" : "opacity-0"
                 }`}
                 aria-hidden={i !== index}
