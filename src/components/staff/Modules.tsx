@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, Users, Wallet, HandCoins, BookOpen, Search,
   TrendingUp, TrendingDown, CircleDollarSign,
+  Upload, ShieldCheck, Calculator, FileText, Receipt, Calendar, Percent,
 } from "lucide-react";
 
 /* ---------------- Shared UI ---------------- */
