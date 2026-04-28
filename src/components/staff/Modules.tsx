@@ -488,11 +488,36 @@ export const LoansModule = () => {
                 {members.map(m => <SelectItem key={m.id} value={m.id}>{m.member_number} — {m.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {maxEligible != null && (
+              <div className="text-xs mt-1 text-muted-foreground">
+                Max eligible (4× savings): <span className="font-mono font-semibold text-primary">{fmt(maxEligible)} ETB</span>
+              </div>
+            )}
           </div>
           <div><Label className="text-xs">Principal (ETB)</Label><Input type="number" value={form.principal} onChange={e => setForm({ ...form, principal: e.target.value })} /></div>
-          <div><Label className="text-xs">Interest %</Label><Input type="number" step="0.1" value={form.interest_rate} onChange={e => setForm({ ...form, interest_rate: e.target.value })} /></div>
-          <div><Label className="text-xs">Term (months)</Label><Input type="number" value={form.term_months} onChange={e => setForm({ ...form, term_months: e.target.value })} /></div>
+          <div><Label className="text-xs">Interest % (auto)</Label><Input type="number" step="0.1" value={form.interest_rate} readOnly className="bg-muted" /></div>
+          <div>
+            <Label className="text-xs">Term (months)</Label>
+            <Select value={form.term_months} onValueChange={v => setForm({ ...form, term_months: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12">12 (1y · 15%)</SelectItem>
+                <SelectItem value="24">24 (2y · 15%)</SelectItem>
+                <SelectItem value="36">36 (3y · 15%)</SelectItem>
+                <SelectItem value="48">48 (4y · 16%)</SelectItem>
+                <SelectItem value="60">60 (5y · 17%)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label className="text-xs">Purpose</Label><Input value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} /></div>
+          {feePreview && (
+            <div className="sm:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-card border rounded-lg p-3">
+              <div><div className="text-muted-foreground">Service (1%)</div><div className="font-mono font-semibold">{fmt(feePreview.service)}</div></div>
+              <div><div className="text-muted-foreground">Insurance</div><div className="font-mono font-semibold">{fmt(feePreview.insurance)}</div></div>
+              <div><div className="text-muted-foreground">Net to member</div><div className="font-mono font-semibold text-emerald-700">{fmt(feePreview.net)}</div></div>
+              <div><div className="text-muted-foreground">Monthly inst.</div><div className="font-mono font-semibold text-primary">{fmt(monthlyPreview)}</div></div>
+            </div>
+          )}
           <div className="sm:col-span-3 flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
             <Button size="sm" variant="hero" onClick={create} disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Submit</Button>
@@ -533,10 +558,13 @@ export const LoansModule = () => {
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex gap-1">
                         {r.status === "pending" && <>
-                          <Button size="sm" variant="hero" onClick={() => setStatus(r.id, "active")}>Approve</Button>
+                          <Button size="sm" variant="hero" onClick={() => setStatus(r.id, "active")}>Approve & Disburse</Button>
                           <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "rejected")}>Reject</Button>
                         </>}
-                        {r.status === "active" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "closed")}>Close</Button>}
+                        {r.status === "active" && <>
+                          <Button size="sm" variant="outline" onClick={() => viewSchedule(r)}><Calendar className="size-4" /> Schedule</Button>
+                          <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "closed")}>Close</Button>
+                        </>}
                       </div>
                     </td>
                   </tr>
@@ -546,6 +574,42 @@ export const LoansModule = () => {
           </table>
         )}
       </div>
+      {scheduleFor && (
+        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-4" onClick={() => setScheduleFor(null)}>
+          <div className="bg-card rounded-2xl border max-w-3xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex items-center justify-between">
+              <div>
+                <div className="font-semibold">Amortization Schedule — {scheduleFor.loan_number}</div>
+                <div className="text-xs text-muted-foreground">Principal {fmt(scheduleFor.principal)} · {scheduleFor.term_months} months · {(Number(scheduleFor.interest_rate)*100).toFixed(2)}%/yr</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setScheduleFor(null)}>Close</Button>
+            </div>
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+                <th className="px-3 py-2">#</th><th className="px-3 py-2">Due</th>
+                <th className="px-3 py-2 text-right">Installment</th>
+                <th className="px-3 py-2 text-right">Principal</th>
+                <th className="px-3 py-2 text-right">Interest</th>
+                <th className="px-3 py-2 text-right">Balance</th>
+                <th className="px-3 py-2">Status</th>
+              </tr></thead>
+              <tbody className="divide-y">
+                {schedule.map(s => (
+                  <tr key={s.id} className="hover:bg-muted/30">
+                    <td className="px-3 py-2 font-mono text-xs">{s.installment_no}</td>
+                    <td className="px-3 py-2 text-xs">{s.due_date}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.installment_amount)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.principal_portion)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.interest_portion)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.balance_after)}</td>
+                    <td className="px-3 py-2"><Badge variant="outline" className="text-xs">{s.status}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
