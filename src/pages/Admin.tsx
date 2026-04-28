@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
-  LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen,
+  LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen, Receipt, PieChart,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -19,6 +19,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
+  PaymentsModule, DividendsModule,
 } from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
@@ -31,8 +32,10 @@ type Section =
   | "dashboard"
   | "registrations"
   | "members"
+  | "payments"
   | "savings"
   | "loans"
+  | "dividends"
   | "finance"
   | "staff";
 
