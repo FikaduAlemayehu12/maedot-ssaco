@@ -88,6 +88,98 @@ export type Database = {
           },
         ]
       }
+      loan_disbursements: {
+        Row: {
+          disbursed_at: string
+          id: string
+          insurance_fee: number
+          loan_id: string
+          net_to_member: number
+          posted_by: string | null
+          principal: number
+          service_fee: number
+          total_fees: number
+        }
+        Insert: {
+          disbursed_at?: string
+          id?: string
+          insurance_fee?: number
+          loan_id: string
+          net_to_member: number
+          posted_by?: string | null
+          principal: number
+          service_fee?: number
+          total_fees?: number
+        }
+        Update: {
+          disbursed_at?: string
+          id?: string
+          insurance_fee?: number
+          loan_id?: string
+          net_to_member?: number
+          posted_by?: string | null
+          principal?: number
+          service_fee?: number
+          total_fees?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_disbursements_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_guarantors: {
+        Row: {
+          created_at: string
+          document_url: string | null
+          guarantor_member_id: string | null
+          guarantor_name: string | null
+          id: string
+          kind: string
+          loan_id: string
+          notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_url?: string | null
+          guarantor_member_id?: string | null
+          guarantor_name?: string | null
+          id?: string
+          kind: string
+          loan_id: string
+          notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_url?: string | null
+          guarantor_member_id?: string | null
+          guarantor_name?: string | null
+          id?: string
+          kind?: string
+          loan_id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_guarantors_guarantor_member_id_fkey"
+            columns: ["guarantor_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_guarantors_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loan_repayments: {
         Row: {
           amount: number
@@ -131,6 +223,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "loan_repayments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_schedule: {
+        Row: {
+          balance_after: number
+          due_date: string
+          id: string
+          installment_amount: number
+          installment_no: number
+          interest_portion: number
+          loan_id: string
+          paid_at: string | null
+          principal_portion: number
+          status: string
+        }
+        Insert: {
+          balance_after: number
+          due_date: string
+          id?: string
+          installment_amount: number
+          installment_no: number
+          interest_portion: number
+          loan_id: string
+          paid_at?: string | null
+          principal_portion: number
+          status?: string
+        }
+        Update: {
+          balance_after?: number
+          due_date?: string
+          id?: string
+          installment_amount?: number
+          installment_no?: number
+          interest_portion?: number
+          loan_id?: string
+          paid_at?: string | null
+          principal_portion?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_schedule_loan_id_fkey"
             columns: ["loan_id"]
             isOneToOne: false
             referencedRelation: "loans"
@@ -196,6 +335,87 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_payments: {
+        Row: {
+          alloc_extra_savings: number
+          alloc_initial_savings: number
+          alloc_registration_fee: number
+          alloc_share_capital: number
+          amount: number
+          bank_name: string | null
+          bank_reference: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          member_id: string | null
+          notes: string | null
+          paid_at: string
+          purpose: string
+          registration_id: string | null
+          screenshot_url: string | null
+          verified: boolean
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          alloc_extra_savings?: number
+          alloc_initial_savings?: number
+          alloc_registration_fee?: number
+          alloc_share_capital?: number
+          amount: number
+          bank_name?: string | null
+          bank_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          paid_at?: string
+          purpose?: string
+          registration_id?: string | null
+          screenshot_url?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          alloc_extra_savings?: number
+          alloc_initial_savings?: number
+          alloc_registration_fee?: number
+          alloc_share_capital?: number
+          amount?: number
+          bank_name?: string | null
+          bank_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          paid_at?: string
+          purpose?: string
+          registration_id?: string | null
+          screenshot_url?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_payments_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "registrations"
             referencedColumns: ["id"]
           },
         ]
@@ -397,6 +617,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sacco_settings: {
+        Row: {
+          disbursement_fee_high: number
+          disbursement_fee_low: number
+          disbursement_fee_threshold: number
+          id: number
+          initial_savings: number
+          loan_eligibility_multiplier: number
+          loan_rate_3y: number
+          loan_rate_4y: number
+          loan_rate_5y: number
+          monthly_min_savings: number
+          registration_fee: number
+          savings_annual_rate: number
+          savings_tax_rate: number
+          share_contribution: number
+          updated_at: string
+        }
+        Insert: {
+          disbursement_fee_high?: number
+          disbursement_fee_low?: number
+          disbursement_fee_threshold?: number
+          id?: number
+          initial_savings?: number
+          loan_eligibility_multiplier?: number
+          loan_rate_3y?: number
+          loan_rate_4y?: number
+          loan_rate_5y?: number
+          monthly_min_savings?: number
+          registration_fee?: number
+          savings_annual_rate?: number
+          savings_tax_rate?: number
+          share_contribution?: number
+          updated_at?: string
+        }
+        Update: {
+          disbursement_fee_high?: number
+          disbursement_fee_low?: number
+          disbursement_fee_threshold?: number
+          id?: number
+          initial_savings?: number
+          loan_eligibility_multiplier?: number
+          loan_rate_3y?: number
+          loan_rate_4y?: number
+          loan_rate_5y?: number
+          monthly_min_savings?: number
+          registration_fee?: number
+          savings_annual_rate?: number
+          savings_tax_rate?: number
+          share_contribution?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       savings_accounts: {
         Row: {
           account_number: string
@@ -444,6 +718,53 @@ export type Database = {
           },
         ]
       }
+      savings_interest_accruals: {
+        Row: {
+          account_id: string
+          closing_balance: number
+          gross_interest: number
+          id: string
+          net_interest: number
+          opening_balance: number
+          period: string
+          posted_at: string
+          posted_by: string | null
+          tax: number
+        }
+        Insert: {
+          account_id: string
+          closing_balance: number
+          gross_interest: number
+          id?: string
+          net_interest: number
+          opening_balance: number
+          period: string
+          posted_at?: string
+          posted_by?: string | null
+          tax: number
+        }
+        Update: {
+          account_id?: string
+          closing_balance?: number
+          gross_interest?: number
+          id?: string
+          net_interest?: number
+          opening_balance?: number
+          period?: string
+          posted_at?: string
+          posted_by?: string | null
+          tax?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_interest_accruals_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "savings_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       savings_transactions: {
         Row: {
           account_id: string
@@ -487,6 +808,76 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "savings_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_capital: {
+        Row: {
+          balance: number
+          id: string
+          member_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          member_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_capital_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_dividends: {
+        Row: {
+          amount: number
+          fiscal_year: number
+          id: string
+          member_id: string
+          posted_at: string
+          posted_by: string | null
+          rate: number
+          share_balance: number
+        }
+        Insert: {
+          amount: number
+          fiscal_year: number
+          id?: string
+          member_id: string
+          posted_at?: string
+          posted_by?: string | null
+          rate: number
+          share_balance: number
+        }
+        Update: {
+          amount?: number
+          fiscal_year?: number
+          id?: string
+          member_id?: string
+          posted_at?: string
+          posted_by?: string | null
+          rate?: number
+          share_balance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_dividends_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
@@ -592,6 +983,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accrue_monthly_savings_interest: {
+        Args: { _period?: string }
+        Returns: {
+          accounts_processed: number
+          total_net_interest: number
+        }[]
+      }
+      compute_disbursement_fee: {
+        Args: { _principal: number }
+        Returns: {
+          insurance_fee: number
+          net_to_member: number
+          service_fee: number
+          total_fees: number
+        }[]
+      }
+      compute_loan_rate: { Args: { _term_months: number }; Returns: number }
+      eligible_loan_max: { Args: { _member_id: string }; Returns: number }
+      generate_loan_schedule: { Args: { _loan_id: string }; Returns: number }
       generate_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
