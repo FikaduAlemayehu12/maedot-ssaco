@@ -119,62 +119,45 @@ export const HeroSlider = () => {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Ambient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-secondary via-secondary to-secondary/80" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+      {/* Full-screen background image slides */}
+      {slides.map((s, i) => (
+        <div
+          key={i}
+          className={`absolute inset-0 transition-opacity duration-1000 ${
+            i === index ? "opacity-100" : "opacity-0"
+          }`}
+          aria-hidden={i !== index}
+        >
+          <img
+            src={s.image}
+            alt=""
+            width={1920}
+            height={1080}
+            loading={i === 0 ? "eager" : "lazy"}
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
+        </div>
+      ))}
 
-      {/* Content */}
+      {/* Dark gradient overlay for legibility */}
+      <div className="absolute inset-0 bg-gradient-to-b from-secondary/70 via-secondary/55 to-secondary/85" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.35)_100%)]" />
+
+      {/* Centered text content */}
       <div className="relative z-10 container pt-28 pb-16 sm:pt-32 sm:pb-20 min-h-[100svh] flex flex-col items-center justify-center text-center">
-        {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/15 backdrop-blur border border-primary/30 mb-6 animate-fade-up">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/20 backdrop-blur border border-primary/40 mb-6 animate-fade-up">
           <Sparkles className="size-3.5 text-primary" />
           <span className="text-xs font-semibold tracking-wide text-primary">{current.eyebrow}</span>
         </div>
 
-        {/* Centered hero image */}
-        <div className="relative mx-auto mb-8 w-full max-w-2xl animate-fade-up">
-          <div className="relative mx-auto aspect-square sm:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-elegant border border-primary/20 bg-secondary-foreground/5 flex items-center justify-center">
-            {slides.map((s, i) => (
-              <img
-                key={i}
-                src={s.image}
-                alt=""
-                width={1200}
-                height={1200}
-                loading={i === 0 ? "eager" : "lazy"}
-                className={`absolute inset-0 m-auto w-full h-full object-contain object-center transition-opacity duration-1000 ${
-                  i === index ? "opacity-100" : "opacity-0"
-                }`}
-                aria-hidden={i !== index}
-              />
-            ))}
-            <div className="absolute inset-0 bg-gradient-to-t from-secondary/40 via-transparent to-transparent pointer-events-none" />
-          </div>
-
-          {/* Controls */}
-          <button
-            onClick={prev}
-            aria-label="Previous slide"
-            className="absolute -left-2 sm:-left-5 top-1/2 -translate-y-1/2 z-20 size-11 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/20 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
-          >
-            <ChevronLeft className="size-5" />
-          </button>
-          <button
-            onClick={next}
-            aria-label="Next slide"
-            className="absolute -right-2 sm:-right-5 top-1/2 -translate-y-1/2 z-20 size-11 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/20 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
-          >
-            <ChevronRight className="size-5" />
-          </button>
-        </div>
-
-        {/* Centered text */}
         <div className="max-w-3xl text-secondary-foreground animate-fade-up">
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.08] mb-4">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-display font-bold leading-[1.08] mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]">
             {current.title}
           </h1>
-          <p className="font-display italic text-primary text-lg sm:text-2xl mb-3">{current.amharic}</p>
-          <p className="text-base sm:text-lg text-secondary-foreground/85 max-w-2xl mx-auto mb-8">
+          <p className="font-display italic text-primary text-lg sm:text-2xl mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            {current.amharic}
+          </p>
+          <p className="text-base sm:text-lg text-secondary-foreground/95 max-w-2xl mx-auto mb-8 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
             {current.subtitle}
           </p>
 
@@ -185,17 +168,33 @@ export const HeroSlider = () => {
             <Button variant="glass" size="xl" asChild>
               <Link to="/admin/login"><LogIn className="size-4" /> Login</Link>
             </Button>
-            <Button variant="outline" size="xl" asChild className="bg-transparent text-secondary-foreground border-secondary-foreground/40 hover:bg-secondary-foreground/10 hover:text-secondary-foreground">
+            <Button variant="outline" size="xl" asChild className="bg-transparent text-secondary-foreground border-secondary-foreground/60 hover:bg-secondary-foreground/10 hover:text-secondary-foreground">
               <Link to="/register"><Wallet className="size-4" /> Apply Loan</Link>
             </Button>
           </div>
 
-          <div className="mt-8 flex items-center justify-center gap-5 text-sm text-secondary-foreground/70">
+          <div className="mt-8 flex items-center justify-center gap-5 text-sm text-secondary-foreground/85">
             <div className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /> NBE-aligned</div>
             <a href={`tel:${settings.phone}`} className="hover:text-primary font-semibold">📞 {settings.phone}</a>
           </div>
         </div>
       </div>
+
+      {/* Slide controls */}
+      <button
+        onClick={prev}
+        aria-label="Previous slide"
+        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 size-11 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/30 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
+      >
+        <ChevronLeft className="size-5" />
+      </button>
+      <button
+        onClick={next}
+        aria-label="Next slide"
+        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 size-11 rounded-full bg-secondary-foreground/10 backdrop-blur border border-secondary-foreground/30 grid place-items-center text-secondary-foreground hover:bg-primary hover:border-primary transition-all"
+      >
+        <ChevronRight className="size-5" />
+      </button>
     </section>
   );
 };
