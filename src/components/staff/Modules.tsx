@@ -361,6 +361,10 @@ export const LoansModule = () => {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ member_id: "", principal: "", interest_rate: "12", term_months: "12", purpose: "" });
+  const [maxEligible, setMaxEligible] = useState<number | null>(null);
+  const [feePreview, setFeePreview] = useState<{ service: number; insurance: number; total: number; net: number } | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<Loan | null>(null);
+  const [schedule, setSchedule] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -375,15 +379,53 @@ export const LoansModule = () => {
   };
   useEffect(() => { load(); }, []);
 
+  // Recompute eligibility & rate when member or term changes
+  useEffect(() => {
+    if (!form.member_id) { setMaxEligible(null); return; }
+    (async () => {
+      const { data } = await supabase.rpc("eligible_loan_max", { _member_id: form.member_id });
+      if (data != null) setMaxEligible(Number(data));
+    })();
+  }, [form.member_id]);
+
+  useEffect(() => {
+    const t = Number(form.term_months);
+    if (!t) return;
+    (async () => {
+      const { data } = await supabase.rpc("compute_loan_rate", { _term_months: t });
+      if (data != null) setForm(f => ({ ...f, interest_rate: String(Number(data) * 100) }));
+    })();
+  }, [form.term_months]);
+
+  // Fee preview as principal changes
+  useEffect(() => {
+    const p = Number(form.principal);
+    if (!Number.isFinite(p) || p <= 0) { setFeePreview(null); return; }
+    (async () => {
+      const { data } = await supabase.rpc("compute_disbursement_fee", { _principal: p });
+      const r = Array.isArray(data) ? data[0] : data;
+      if (r) setFeePreview({ service: Number(r.service_fee), insurance: Number(r.insurance_fee), total: Number(r.total_fees), net: Number(r.net_to_member) });
+    })();
+  }, [form.principal]);
+
+  const monthlyPreview = useMemo(() => {
+    const P = Number(form.principal); const r = Number(form.interest_rate) / 100 / 12; const n = Number(form.term_months);
+    if (!P || !n) return 0;
+    return r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n));
+  }, [form.principal, form.interest_rate, form.term_months]);
+
   const create = async () => {
     if (!form.member_id || !form.principal) return toast({ title: "Member and principal required", variant: "destructive" });
+    const principal = Number(form.principal);
+    if (maxEligible != null && principal > maxEligible) {
+      return toast({ title: "Exceeds eligibility (4× savings)", description: `Max: ${fmt(maxEligible)} ETB`, variant: "destructive" });
+    }
     setBusy(true);
     const loan_number = "LN-" + Date.now().toString().slice(-8);
-    const principal = Number(form.principal);
     const { error } = await supabase.from("loans").insert({
       loan_number, member_id: form.member_id,
       principal, outstanding_balance: principal,
-      interest_rate: Number(form.interest_rate) || 0,
+      interest_rate: (Number(form.interest_rate) || 0) / 100,
       term_months: Number(form.term_months) || 12,
       purpose: form.purpose, status: "pending",
     });
@@ -394,13 +436,38 @@ export const LoansModule = () => {
   };
 
   const setStatus = async (id: string, status: string) => {
+    if (status === "active") {
+      // Approve: post disbursement, generate schedule
+      const loan = rows.find(r => r.id === id);
+      if (!loan) return;
+      const { data: feeData } = await supabase.rpc("compute_disbursement_fee", { _principal: loan.principal });
+      const fee = Array.isArray(feeData) ? feeData[0] : feeData;
+      if (fee) {
+        await supabase.from("loan_disbursements").insert({
+          loan_id: id, principal: loan.principal,
+          service_fee: fee.service_fee, insurance_fee: fee.insurance_fee,
+          total_fees: fee.total_fees, net_to_member: fee.net_to_member,
+        });
+      }
+      await supabase.from("loans").update({ status: "active", disbursed_at: new Date().toISOString() }).eq("id", id);
+      const { error: schedErr } = await supabase.rpc("generate_loan_schedule", { _loan_id: id });
+      if (schedErr) toast({ title: "Schedule failed", description: schedErr.message, variant: "destructive" });
+      toast({ title: "Loan disbursed", description: fee ? `Net to member: ${fmt(Number(fee.net_to_member))} ETB` : undefined });
+      load();
+      return;
+    }
     const update: any = { status };
-    if (status === "active") update.disbursed_at = new Date().toISOString();
     if (status === "closed") update.closed_at = new Date().toISOString();
     const { error } = await supabase.from("loans").update(update).eq("id", id);
     if (error) return toast({ title: error.message, variant: "destructive" });
     toast({ title: `Loan ${status}` });
     load();
+  };
+
+  const viewSchedule = async (loan: Loan) => {
+    setScheduleFor(loan);
+    const { data } = await supabase.from("loan_schedule").select("*").eq("loan_id", loan.id).order("installment_no");
+    setSchedule(data ?? []);
   };
 
   const memberOf = (id: string) => members.find(m => m.id === id);
