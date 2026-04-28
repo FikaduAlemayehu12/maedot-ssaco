@@ -201,6 +201,7 @@ export const SavingsModule = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [accruing, setAccruing] = useState(false);
   const [form, setForm] = useState({ member_id: "", product: "regular", interest_rate: "5" });
 
   const load = async () => {
@@ -252,11 +253,27 @@ export const SavingsModule = () => {
 
   const memberOf = (id: string) => members.find(m => m.id === id);
 
+  const runAccrual = async () => {
+    const period = prompt("Accrual period (YYYY-MM-01). Leave blank for current month.", "")?.trim();
+    setAccruing(true);
+    const { data, error } = await supabase.rpc("accrue_monthly_savings_interest", period ? { _period: period } : {});
+    setAccruing(false);
+    if (error) return toast({ title: "Accrual failed", description: error.message, variant: "destructive" });
+    const r = Array.isArray(data) ? data[0] : data;
+    toast({ title: "Monthly interest posted", description: `${r?.accounts_processed ?? 0} accounts · net ${fmt(Number(r?.total_net_interest ?? 0))} ETB` });
+    load();
+  };
+
   return (
     <div className="bg-card rounded-2xl border shadow-card-soft">
       <div className="p-3 sm:p-4 border-b flex items-center justify-between">
         <div className="text-sm font-semibold">Savings Accounts ({rows.length})</div>
-        <Button size="sm" variant="hero" onClick={() => setShowForm(s => !s)}><Plus className="size-4" /> New Account</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={runAccrual} disabled={accruing} title="Post monthly interest at 7%/yr (5% tax)">
+            {accruing ? <Loader2 className="size-4 animate-spin" /> : <Percent className="size-4" />} Run Monthly Accrual
+          </Button>
+          <Button size="sm" variant="hero" onClick={() => setShowForm(s => !s)}><Plus className="size-4" /> New Account</Button>
+        </div>
       </div>
       {showForm && (
         <div className="p-4 border-b bg-muted/30 grid sm:grid-cols-3 gap-3">
