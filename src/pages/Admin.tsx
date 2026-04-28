@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
-  LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen,
+  LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen, Receipt, PieChart,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -19,6 +19,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
+  PaymentsModule, DividendsModule,
 } from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
@@ -31,8 +32,10 @@ type Section =
   | "dashboard"
   | "registrations"
   | "members"
+  | "payments"
   | "savings"
   | "loans"
+  | "dividends"
   | "finance"
   | "staff";
 
@@ -201,11 +204,17 @@ const Admin = () => {
           {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","maker","checker"].includes(r))) && (
             <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "members"} label="Members" onClick={() => setSection("members")} />
           )}
+          {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("maker") || roles.includes("checker") || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<Receipt className="size-4" />} active={section === "payments"} label="Payments" onClick={() => setSection("payments")} />
+          )}
           {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("finance_officer")) && (
             <SidebarItem icon={<Wallet className="size-4" />} active={section === "savings"} label="Savings" onClick={() => setSection("savings")} />
           )}
           {(isAdmin || roles.includes("loan_officer") || roles.includes("finance_officer") || roles.includes("cashier")) && (
             <SidebarItem icon={<HandCoins className="size-4" />} active={section === "loans"} label="Loans" onClick={() => setSection("loans")} />
+          )}
+          {(isAdmin || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<PieChart className="size-4" />} active={section === "dividends"} label="Dividends" onClick={() => setSection("dividends")} />
           )}
           {(isAdmin || roles.includes("finance_officer")) && (
             <SidebarItem icon={<BookOpen className="size-4" />} active={section === "finance"} label="Finance / GL" onClick={() => setSection("finance")} />
@@ -238,8 +247,10 @@ const Admin = () => {
                   : section === "staff" ? t.admin.staffMgmt
                   : section === "dashboard" ? "Dashboard"
                   : section === "members" ? "Members"
+                  : section === "payments" ? "Member Payments"
                   : section === "savings" ? "Savings"
                   : section === "loans" ? "Loans"
+                  : section === "dividends" ? "Share Dividends"
                   : "Finance / General Ledger"}
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
@@ -247,8 +258,10 @@ const Admin = () => {
                   : section === "staff" ? t.admin.staffMgmtDesc
                   : section === "dashboard" ? "Overview of SACCO performance"
                   : section === "members" ? "Manage member accounts"
+                  : section === "payments" ? "Bank transfers · registration fees · monthly contributions"
                   : section === "savings" ? "Savings accounts & transactions"
                   : section === "loans" ? "Loan applications & repayments"
+                  : section === "dividends" ? "Annual share dividend distribution"
                   : "Chart of accounts & journal entries"}
               </p>
             </div>
@@ -267,8 +280,10 @@ const Admin = () => {
             ["dashboard","Dashboard"],
             ["registrations", t.admin.tabs.registrations],
             ["members","Members"],
+            ["payments","Payments"],
             ["savings","Savings"],
             ["loans","Loans"],
+            ["dividends","Dividends"],
             ["finance","Finance"],
             ...(isAdmin ? [["staff", t.admin.tabs.staff] as const] : []),
           ] as const).map(([s, label]) => (
@@ -282,8 +297,10 @@ const Admin = () => {
         <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {section === "dashboard" && <DashboardModule />}
           {section === "members" && <MembersModule />}
+          {section === "payments" && <PaymentsModule />}
           {section === "savings" && <SavingsModule />}
           {section === "loans" && <LoansModule />}
+          {section === "dividends" && <DividendsModule />}
           {section === "finance" && <FinanceModule />}
           {section === "registrations" && (
             <>

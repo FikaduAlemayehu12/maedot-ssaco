@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   Loader2, Plus, Users, Wallet, HandCoins, BookOpen, Search,
   TrendingUp, TrendingDown, CircleDollarSign,
+  Upload, ShieldCheck, Calculator, FileText, Receipt, Calendar, Percent,
 } from "lucide-react";
 
 /* ---------------- Shared UI ---------------- */
@@ -200,6 +201,7 @@ export const SavingsModule = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [accruing, setAccruing] = useState(false);
   const [form, setForm] = useState({ member_id: "", product: "regular", interest_rate: "5" });
 
   const load = async () => {
@@ -251,11 +253,27 @@ export const SavingsModule = () => {
 
   const memberOf = (id: string) => members.find(m => m.id === id);
 
+  const runAccrual = async () => {
+    const period = prompt("Accrual period (YYYY-MM-01). Leave blank for current month.", "")?.trim();
+    setAccruing(true);
+    const { data, error } = await supabase.rpc("accrue_monthly_savings_interest", period ? { _period: period } : {});
+    setAccruing(false);
+    if (error) return toast({ title: "Accrual failed", description: error.message, variant: "destructive" });
+    const r = Array.isArray(data) ? data[0] : data;
+    toast({ title: "Monthly interest posted", description: `${r?.accounts_processed ?? 0} accounts · net ${fmt(Number(r?.total_net_interest ?? 0))} ETB` });
+    load();
+  };
+
   return (
     <div className="bg-card rounded-2xl border shadow-card-soft">
       <div className="p-3 sm:p-4 border-b flex items-center justify-between">
         <div className="text-sm font-semibold">Savings Accounts ({rows.length})</div>
-        <Button size="sm" variant="hero" onClick={() => setShowForm(s => !s)}><Plus className="size-4" /> New Account</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={runAccrual} disabled={accruing} title="Post monthly interest at 7%/yr (5% tax)">
+            {accruing ? <Loader2 className="size-4 animate-spin" /> : <Percent className="size-4" />} Run Monthly Accrual
+          </Button>
+          <Button size="sm" variant="hero" onClick={() => setShowForm(s => !s)}><Plus className="size-4" /> New Account</Button>
+        </div>
       </div>
       {showForm && (
         <div className="p-4 border-b bg-muted/30 grid sm:grid-cols-3 gap-3">
@@ -343,6 +361,10 @@ export const LoansModule = () => {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ member_id: "", principal: "", interest_rate: "12", term_months: "12", purpose: "" });
+  const [maxEligible, setMaxEligible] = useState<number | null>(null);
+  const [feePreview, setFeePreview] = useState<{ service: number; insurance: number; total: number; net: number } | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<Loan | null>(null);
+  const [schedule, setSchedule] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -357,15 +379,53 @@ export const LoansModule = () => {
   };
   useEffect(() => { load(); }, []);
 
+  // Recompute eligibility & rate when member or term changes
+  useEffect(() => {
+    if (!form.member_id) { setMaxEligible(null); return; }
+    (async () => {
+      const { data } = await supabase.rpc("eligible_loan_max", { _member_id: form.member_id });
+      if (data != null) setMaxEligible(Number(data));
+    })();
+  }, [form.member_id]);
+
+  useEffect(() => {
+    const t = Number(form.term_months);
+    if (!t) return;
+    (async () => {
+      const { data } = await supabase.rpc("compute_loan_rate", { _term_months: t });
+      if (data != null) setForm(f => ({ ...f, interest_rate: String(Number(data) * 100) }));
+    })();
+  }, [form.term_months]);
+
+  // Fee preview as principal changes
+  useEffect(() => {
+    const p = Number(form.principal);
+    if (!Number.isFinite(p) || p <= 0) { setFeePreview(null); return; }
+    (async () => {
+      const { data } = await supabase.rpc("compute_disbursement_fee", { _principal: p });
+      const r = Array.isArray(data) ? data[0] : data;
+      if (r) setFeePreview({ service: Number(r.service_fee), insurance: Number(r.insurance_fee), total: Number(r.total_fees), net: Number(r.net_to_member) });
+    })();
+  }, [form.principal]);
+
+  const monthlyPreview = useMemo(() => {
+    const P = Number(form.principal); const r = Number(form.interest_rate) / 100 / 12; const n = Number(form.term_months);
+    if (!P || !n) return 0;
+    return r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n));
+  }, [form.principal, form.interest_rate, form.term_months]);
+
   const create = async () => {
     if (!form.member_id || !form.principal) return toast({ title: "Member and principal required", variant: "destructive" });
+    const principal = Number(form.principal);
+    if (maxEligible != null && principal > maxEligible) {
+      return toast({ title: "Exceeds eligibility (4× savings)", description: `Max: ${fmt(maxEligible)} ETB`, variant: "destructive" });
+    }
     setBusy(true);
     const loan_number = "LN-" + Date.now().toString().slice(-8);
-    const principal = Number(form.principal);
     const { error } = await supabase.from("loans").insert({
       loan_number, member_id: form.member_id,
       principal, outstanding_balance: principal,
-      interest_rate: Number(form.interest_rate) || 0,
+      interest_rate: (Number(form.interest_rate) || 0) / 100,
       term_months: Number(form.term_months) || 12,
       purpose: form.purpose, status: "pending",
     });
@@ -376,13 +436,38 @@ export const LoansModule = () => {
   };
 
   const setStatus = async (id: string, status: string) => {
+    if (status === "active") {
+      // Approve: post disbursement, generate schedule
+      const loan = rows.find(r => r.id === id);
+      if (!loan) return;
+      const { data: feeData } = await supabase.rpc("compute_disbursement_fee", { _principal: loan.principal });
+      const fee = Array.isArray(feeData) ? feeData[0] : feeData;
+      if (fee) {
+        await supabase.from("loan_disbursements").insert({
+          loan_id: id, principal: loan.principal,
+          service_fee: fee.service_fee, insurance_fee: fee.insurance_fee,
+          total_fees: fee.total_fees, net_to_member: fee.net_to_member,
+        });
+      }
+      await supabase.from("loans").update({ status: "active", disbursed_at: new Date().toISOString() }).eq("id", id);
+      const { error: schedErr } = await supabase.rpc("generate_loan_schedule", { _loan_id: id });
+      if (schedErr) toast({ title: "Schedule failed", description: schedErr.message, variant: "destructive" });
+      toast({ title: "Loan disbursed", description: fee ? `Net to member: ${fmt(Number(fee.net_to_member))} ETB` : undefined });
+      load();
+      return;
+    }
     const update: any = { status };
-    if (status === "active") update.disbursed_at = new Date().toISOString();
     if (status === "closed") update.closed_at = new Date().toISOString();
     const { error } = await supabase.from("loans").update(update).eq("id", id);
     if (error) return toast({ title: error.message, variant: "destructive" });
     toast({ title: `Loan ${status}` });
     load();
+  };
+
+  const viewSchedule = async (loan: Loan) => {
+    setScheduleFor(loan);
+    const { data } = await supabase.from("loan_schedule").select("*").eq("loan_id", loan.id).order("installment_no");
+    setSchedule(data ?? []);
   };
 
   const memberOf = (id: string) => members.find(m => m.id === id);
@@ -403,11 +488,36 @@ export const LoansModule = () => {
                 {members.map(m => <SelectItem key={m.id} value={m.id}>{m.member_number} — {m.full_name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {maxEligible != null && (
+              <div className="text-xs mt-1 text-muted-foreground">
+                Max eligible (4× savings): <span className="font-mono font-semibold text-primary">{fmt(maxEligible)} ETB</span>
+              </div>
+            )}
           </div>
           <div><Label className="text-xs">Principal (ETB)</Label><Input type="number" value={form.principal} onChange={e => setForm({ ...form, principal: e.target.value })} /></div>
-          <div><Label className="text-xs">Interest %</Label><Input type="number" step="0.1" value={form.interest_rate} onChange={e => setForm({ ...form, interest_rate: e.target.value })} /></div>
-          <div><Label className="text-xs">Term (months)</Label><Input type="number" value={form.term_months} onChange={e => setForm({ ...form, term_months: e.target.value })} /></div>
+          <div><Label className="text-xs">Interest % (auto)</Label><Input type="number" step="0.1" value={form.interest_rate} readOnly className="bg-muted" /></div>
+          <div>
+            <Label className="text-xs">Term (months)</Label>
+            <Select value={form.term_months} onValueChange={v => setForm({ ...form, term_months: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="12">12 (1y · 15%)</SelectItem>
+                <SelectItem value="24">24 (2y · 15%)</SelectItem>
+                <SelectItem value="36">36 (3y · 15%)</SelectItem>
+                <SelectItem value="48">48 (4y · 16%)</SelectItem>
+                <SelectItem value="60">60 (5y · 17%)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label className="text-xs">Purpose</Label><Input value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} /></div>
+          {feePreview && (
+            <div className="sm:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-card border rounded-lg p-3">
+              <div><div className="text-muted-foreground">Service (1%)</div><div className="font-mono font-semibold">{fmt(feePreview.service)}</div></div>
+              <div><div className="text-muted-foreground">Insurance</div><div className="font-mono font-semibold">{fmt(feePreview.insurance)}</div></div>
+              <div><div className="text-muted-foreground">Net to member</div><div className="font-mono font-semibold text-emerald-700">{fmt(feePreview.net)}</div></div>
+              <div><div className="text-muted-foreground">Monthly inst.</div><div className="font-mono font-semibold text-primary">{fmt(monthlyPreview)}</div></div>
+            </div>
+          )}
           <div className="sm:col-span-3 flex justify-end gap-2">
             <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
             <Button size="sm" variant="hero" onClick={create} disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Submit</Button>
@@ -448,10 +558,13 @@ export const LoansModule = () => {
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex gap-1">
                         {r.status === "pending" && <>
-                          <Button size="sm" variant="hero" onClick={() => setStatus(r.id, "active")}>Approve</Button>
+                          <Button size="sm" variant="hero" onClick={() => setStatus(r.id, "active")}>Approve & Disburse</Button>
                           <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "rejected")}>Reject</Button>
                         </>}
-                        {r.status === "active" && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "closed")}>Close</Button>}
+                        {r.status === "active" && <>
+                          <Button size="sm" variant="outline" onClick={() => viewSchedule(r)}><Calendar className="size-4" /> Schedule</Button>
+                          <Button size="sm" variant="outline" onClick={() => setStatus(r.id, "closed")}>Close</Button>
+                        </>}
                       </div>
                     </td>
                   </tr>
@@ -461,6 +574,42 @@ export const LoansModule = () => {
           </table>
         )}
       </div>
+      {scheduleFor && (
+        <div className="fixed inset-0 z-50 bg-black/60 grid place-items-center p-4" onClick={() => setScheduleFor(null)}>
+          <div className="bg-card rounded-2xl border max-w-3xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b flex items-center justify-between">
+              <div>
+                <div className="font-semibold">Amortization Schedule — {scheduleFor.loan_number}</div>
+                <div className="text-xs text-muted-foreground">Principal {fmt(scheduleFor.principal)} · {scheduleFor.term_months} months · {(Number(scheduleFor.interest_rate)*100).toFixed(2)}%/yr</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setScheduleFor(null)}>Close</Button>
+            </div>
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 sticky top-0">
+                <th className="px-3 py-2">#</th><th className="px-3 py-2">Due</th>
+                <th className="px-3 py-2 text-right">Installment</th>
+                <th className="px-3 py-2 text-right">Principal</th>
+                <th className="px-3 py-2 text-right">Interest</th>
+                <th className="px-3 py-2 text-right">Balance</th>
+                <th className="px-3 py-2">Status</th>
+              </tr></thead>
+              <tbody className="divide-y">
+                {schedule.map(s => (
+                  <tr key={s.id} className="hover:bg-muted/30">
+                    <td className="px-3 py-2 font-mono text-xs">{s.installment_no}</td>
+                    <td className="px-3 py-2 text-xs">{s.due_date}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.installment_amount)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.principal_portion)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.interest_portion)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{fmt(s.balance_after)}</td>
+                    <td className="px-3 py-2"><Badge variant="outline" className="text-xs">{s.status}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -631,6 +780,342 @@ export const FinanceModule = () => {
             </table>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------------- REGISTRATION PAYMENTS ---------------- */
+
+type Payment = {
+  id: string; member_id: string | null; registration_id: string | null;
+  purpose: string; amount: number;
+  alloc_registration_fee: number; alloc_share_capital: number;
+  alloc_initial_savings: number; alloc_extra_savings: number;
+  bank_name: string | null; bank_reference: string | null;
+  screenshot_url: string | null; paid_at: string;
+  verified: boolean; created_at: string;
+};
+
+export const PaymentsModule = () => {
+  const [rows, setRows] = useState<Payment[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
+  const [form, setForm] = useState({
+    member_id: "", purpose: "registration",
+    amount: "2050", bank_name: "", bank_reference: "", paid_at: new Date().toISOString().slice(0,10),
+    notes: "",
+  });
+  const [file, setFile] = useState<File | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const [p, m, s] = await Promise.all([
+      supabase.from("member_payments").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("members").select("id,member_number,full_name,phone,email,region,status,created_at").limit(500),
+      supabase.from("sacco_settings").select("*").eq("id", 1).single(),
+    ]);
+    setLoading(false);
+    if (p.error) toast({ title: p.error.message, variant: "destructive" });
+    setRows((p.data ?? []) as Payment[]);
+    setMembers((m.data ?? []) as Member[]);
+    setSettings(s.data);
+  };
+  useEffect(() => { load(); }, []);
+
+  const memberOf = (id: string | null) => members.find(m => m.id === id);
+
+  const allocations = useMemo(() => {
+    const amt = Number(form.amount) || 0;
+    if (form.purpose !== "registration" || !settings) {
+      return { fee: 0, share: 0, initial: 0, extra: amt };
+    }
+    const fee = settings.registration_fee, share = settings.share_contribution, init = settings.initial_savings;
+    const required = Number(fee) + Number(share) + Number(init);
+    if (amt < required) return { fee: 0, share: 0, initial: 0, extra: 0, short: required - amt };
+    return { fee: Number(fee), share: Number(share), initial: Number(init), extra: amt - required };
+  }, [form.amount, form.purpose, settings]);
+
+  const submit = async () => {
+    if (!form.member_id) return toast({ title: "Select member", variant: "destructive" });
+    if (form.purpose === "registration" && (allocations as any).short)
+      return toast({ title: "Insufficient amount", description: `Registration requires at least ${fmt(2050)} ETB`, variant: "destructive" });
+    setBusy(true);
+    let screenshot_url: string | null = null;
+    if (file) {
+      const path = `${form.member_id}/${Date.now()}-${file.name}`;
+      const up = await supabase.storage.from("member-payments").upload(path, file, { upsert: false });
+      if (up.error) { setBusy(false); return toast({ title: "Upload failed", description: up.error.message, variant: "destructive" }); }
+      screenshot_url = up.data.path;
+    }
+    const { error } = await supabase.from("member_payments").insert({
+      member_id: form.member_id,
+      purpose: form.purpose,
+      amount: Number(form.amount),
+      alloc_registration_fee: allocations.fee,
+      alloc_share_capital: allocations.share,
+      alloc_initial_savings: allocations.initial,
+      alloc_extra_savings: allocations.extra,
+      bank_name: form.bank_name || null,
+      bank_reference: form.bank_reference || null,
+      paid_at: form.paid_at,
+      screenshot_url,
+      notes: form.notes || null,
+    });
+    setBusy(false);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Payment recorded", description: "Awaiting verification" });
+    setForm({ member_id: "", purpose: "registration", amount: "2050", bank_name: "", bank_reference: "", paid_at: new Date().toISOString().slice(0,10), notes: "" });
+    setFile(null); setShowForm(false); load();
+  };
+
+  const verify = async (p: Payment) => {
+    if (!confirm(`Verify payment of ${fmt(p.amount)} ETB? This will allocate share capital and post savings.`)) return;
+    const { error: e1 } = await supabase.from("member_payments")
+      .update({ verified: true, verified_at: new Date().toISOString() }).eq("id", p.id);
+    if (e1) return toast({ title: e1.message, variant: "destructive" });
+
+    // Update share capital
+    if (Number(p.alloc_share_capital) > 0 && p.member_id) {
+      const { data: existing } = await supabase.from("share_capital").select("id,balance").eq("member_id", p.member_id).maybeSingle();
+      if (existing) {
+        await supabase.from("share_capital").update({ balance: Number(existing.balance) + Number(p.alloc_share_capital), updated_at: new Date().toISOString() }).eq("id", existing.id);
+      } else {
+        await supabase.from("share_capital").insert({ member_id: p.member_id, balance: p.alloc_share_capital });
+      }
+    }
+
+    // Post initial + extra savings to a savings account (create if none)
+    const savingsAdd = Number(p.alloc_initial_savings) + Number(p.alloc_extra_savings);
+    if (savingsAdd > 0 && p.member_id) {
+      let { data: acc } = await supabase.from("savings_accounts").select("id,balance").eq("member_id", p.member_id).eq("status", "active").limit(1).maybeSingle();
+      if (!acc) {
+        const account_number = "SAV-" + Date.now().toString().slice(-8);
+        const ins = await supabase.from("savings_accounts").insert({
+          member_id: p.member_id, account_number, product: "regular",
+          interest_rate: Number(settings?.savings_annual_rate ?? 0.07), balance: 0,
+        }).select("id,balance").single();
+        acc = ins.data as any;
+      }
+      if (acc) {
+        const newBal = Number(acc.balance) + savingsAdd;
+        await supabase.from("savings_transactions").insert({
+          account_id: acc.id, txn_type: "deposit", amount: savingsAdd,
+          running_balance: newBal, reference: p.bank_reference,
+          note: `From payment ${p.id}`,
+        });
+        await supabase.from("savings_accounts").update({ balance: newBal }).eq("id", acc.id);
+      }
+    }
+    toast({ title: "Payment verified & posted" });
+    load();
+  };
+
+  return (
+    <div className="bg-card rounded-2xl border shadow-card-soft">
+      <div className="p-3 sm:p-4 border-b flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">Member Payments ({rows.length})</div>
+          <div className="text-xs text-muted-foreground">Registration: {fmt(1050)} fee + {fmt(500)} share + {fmt(500)} savings = {fmt(2050)} ETB minimum</div>
+        </div>
+        <Button size="sm" variant="hero" onClick={() => setShowForm(s => !s)}><Receipt className="size-4" /> Record Payment</Button>
+      </div>
+      {showForm && (
+        <div className="p-4 border-b bg-muted/30 grid sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2">
+            <Label className="text-xs">Member</Label>
+            <Select value={form.member_id} onValueChange={v => setForm({ ...form, member_id: v })}>
+              <SelectTrigger><SelectValue placeholder="Select member..." /></SelectTrigger>
+              <SelectContent>
+                {members.map(m => <SelectItem key={m.id} value={m.id}>{m.member_number} — {m.full_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Purpose</Label>
+            <Select value={form.purpose} onValueChange={v => setForm({ ...form, purpose: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="registration">Registration (2,050 ETB+)</SelectItem>
+                <SelectItem value="monthly_savings">Monthly savings</SelectItem>
+                <SelectItem value="loan_repayment">Loan repayment</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-xs">Amount (ETB)</Label><Input type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
+          <div><Label className="text-xs">Bank name</Label><Input value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} /></div>
+          <div><Label className="text-xs">Bank reference / TXN ID</Label><Input value={form.bank_reference} onChange={e => setForm({ ...form, bank_reference: e.target.value })} /></div>
+          <div><Label className="text-xs">Paid on</Label><Input type="date" value={form.paid_at} onChange={e => setForm({ ...form, paid_at: e.target.value })} /></div>
+          <div className="sm:col-span-2">
+            <Label className="text-xs">Bank transfer screenshot</Label>
+            <Input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+          <div className="sm:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-card border rounded-lg p-3">
+            <div><div className="text-muted-foreground">Reg. fee</div><div className="font-mono font-semibold">{fmt(allocations.fee)}</div></div>
+            <div><div className="text-muted-foreground">Share capital</div><div className="font-mono font-semibold">{fmt(allocations.share)}</div></div>
+            <div><div className="text-muted-foreground">Initial savings</div><div className="font-mono font-semibold">{fmt(allocations.initial)}</div></div>
+            <div><div className="text-muted-foreground">Extra savings</div><div className="font-mono font-semibold text-emerald-700">{fmt(allocations.extra)}</div></div>
+            {(allocations as any).short && (
+              <div className="col-span-full text-destructive text-xs">Short by {fmt((allocations as any).short)} ETB — registration requires at least 2,050 ETB.</div>
+            )}
+          </div>
+          <div className="sm:col-span-3 flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button size="sm" variant="hero" onClick={submit} disabled={busy}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Record
+            </Button>
+          </div>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        {loading ? (
+          <div className="p-12 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+        ) : rows.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-sm">No payments yet.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40">
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Member</th>
+              <th className="px-4 py-3">Purpose</th>
+              <th className="px-4 py-3 text-right">Amount</th>
+              <th className="px-4 py-3">Reference</th>
+              <th className="px-4 py-3">Doc</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Actions</th>
+            </tr></thead>
+            <tbody className="divide-y">
+              {rows.map(p => {
+                const m = memberOf(p.member_id);
+                return (
+                  <tr key={p.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{p.paid_at}</td>
+                    <td className="px-4 py-3">{m ? `${m.member_number} — ${m.full_name}` : "—"}</td>
+                    <td className="px-4 py-3 capitalize text-xs">{p.purpose.replace("_"," ")}</td>
+                    <td className="px-4 py-3 text-right font-mono">{fmt(p.amount)}</td>
+                    <td className="px-4 py-3 text-xs">{p.bank_reference}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {p.screenshot_url
+                        ? <button className="text-primary hover:underline" onClick={async () => {
+                            const { data } = await supabase.storage.from("member-payments").createSignedUrl(p.screenshot_url!, 60);
+                            if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                          }}><FileText className="size-4 inline" /> View</button>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.verified
+                        ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-700">Verified</Badge>
+                        : <Badge variant="outline" className="border-primary/30 text-primary">Pending</Badge>}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {!p.verified && <Button size="sm" variant="hero" onClick={() => verify(p)}><ShieldCheck className="size-4" /> Verify & Post</Button>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ---------------- DIVIDENDS ---------------- */
+
+export const DividendsModule = () => {
+  const [rows, setRows] = useState<any[]>([]);
+  const [shares, setShares] = useState<any[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [rate, setRate] = useState("10");
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    const [d, s, m] = await Promise.all([
+      supabase.from("share_dividends").select("*").order("posted_at", { ascending: false }),
+      supabase.from("share_capital").select("*"),
+      supabase.from("members").select("id,member_number,full_name,phone,email,region,status,created_at"),
+    ]);
+    setRows(d.data ?? []);
+    setShares(s.data ?? []);
+    setMembers((m.data ?? []) as Member[]);
+  };
+  useEffect(() => { load(); }, []);
+
+  const distribute = async () => {
+    const r = Number(rate) / 100;
+    if (!Number.isFinite(r) || r <= 0) return toast({ title: "Invalid rate", variant: "destructive" });
+    if (!confirm(`Distribute ${rate}% dividends for ${year} on share balances?`)) return;
+    setBusy(true);
+    const inserts = shares.filter(s => Number(s.balance) > 0).map(s => ({
+      member_id: s.member_id, fiscal_year: year, share_balance: s.balance, rate: r,
+      amount: Number(s.balance) * r,
+    }));
+    if (inserts.length === 0) { setBusy(false); return toast({ title: "No share balances" }); }
+    const { error } = await supabase.from("share_dividends").insert(inserts);
+    setBusy(false);
+    if (error) return toast({ title: error.message, variant: "destructive" });
+    toast({ title: "Dividends posted", description: `${inserts.length} members` });
+    load();
+  };
+
+  const memberOf = (id: string) => members.find(m => m.id === id);
+  const totalShares = shares.reduce((a, s) => a + Number(s.balance || 0), 0);
+  const totalDividends = rows.reduce((a, r) => a + Number(r.amount || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <ModuleStat label="Total Share Capital" value={fmt(totalShares)} icon={<CircleDollarSign className="size-5" />} />
+        <ModuleStat label="Members with Shares" value={shares.filter(s => Number(s.balance) > 0).length} icon={<Users className="size-5" />} tone="dark" />
+        <ModuleStat label="Total Dividends Paid" value={fmt(totalDividends)} icon={<TrendingUp className="size-5" />} tone="success" />
+      </div>
+
+      <div className="bg-card rounded-2xl border shadow-card-soft p-4 grid sm:grid-cols-4 gap-3 items-end">
+        <div><Label className="text-xs">Fiscal year</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
+        <div><Label className="text-xs">Dividend rate (%)</Label><Input type="number" step="0.1" value={rate} onChange={e => setRate(e.target.value)} /></div>
+        <div className="sm:col-span-2 flex justify-end">
+          <Button variant="hero" onClick={distribute} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Calculator className="size-4" />} Distribute Annual Dividends
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-2xl border shadow-card-soft overflow-x-auto">
+        <div className="p-3 border-b text-sm font-semibold">Dividend History</div>
+        {rows.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-sm">No dividends posted yet.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40">
+              <th className="px-4 py-3">Year</th><th className="px-4 py-3">Member</th>
+              <th className="px-4 py-3 text-right">Share Balance</th>
+              <th className="px-4 py-3 text-right">Rate</th>
+              <th className="px-4 py-3 text-right">Dividend</th>
+              <th className="px-4 py-3">Posted</th>
+            </tr></thead>
+            <tbody className="divide-y">
+              {rows.map(r => {
+                const m = memberOf(r.member_id);
+                return (
+                  <tr key={r.id} className="hover:bg-muted/30">
+                    <td className="px-4 py-3 font-mono">{r.fiscal_year}</td>
+                    <td className="px-4 py-3">{m ? `${m.member_number} — ${m.full_name}` : "—"}</td>
+                    <td className="px-4 py-3 text-right font-mono">{fmt(r.share_balance)}</td>
+                    <td className="px-4 py-3 text-right">{(Number(r.rate)*100).toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-right font-mono text-emerald-700 font-semibold">{fmt(r.amount)}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(r.posted_at).toLocaleDateString()}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
