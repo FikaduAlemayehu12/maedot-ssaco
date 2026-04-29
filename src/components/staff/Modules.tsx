@@ -14,7 +14,7 @@ import {
   Loader2, Plus, Users, Wallet, HandCoins, BookOpen, Search,
   TrendingUp, TrendingDown, CircleDollarSign,
   Upload, ShieldCheck, Calculator, FileText, Receipt, Calendar, Percent,
-  FileSignature, ShieldAlert,
+  FileSignature, ShieldAlert, CheckCircle2, XCircle,
 } from "lucide-react";
 
 /* ---------------- Shared UI ---------------- */
