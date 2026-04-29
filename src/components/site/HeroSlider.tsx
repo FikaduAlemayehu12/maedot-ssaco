@@ -169,7 +169,7 @@ export const HeroSlider = () => {
               <Link to="/admin/login"><LogIn className="size-4" /> Login</Link>
             </Button>
             <Button variant="outline" size="xl" asChild className="bg-transparent text-secondary-foreground border-secondary-foreground/60 hover:bg-secondary-foreground/10 hover:text-secondary-foreground">
-              <Link to="/register"><Wallet className="size-4" /> Apply Loan</Link>
+              <Link to="/apply-loan"><Wallet className="size-4" /> Apply Loan</Link>
             </Button>
           </div>
 
