@@ -11,6 +11,7 @@ import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
   LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen, Receipt, PieChart,
+  FileSignature,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -19,7 +20,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
-  PaymentsModule, DividendsModule,
+  PaymentsModule, DividendsModule, LoanApplicationsModule,
 } from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
@@ -34,6 +35,7 @@ type Section =
   | "members"
   | "payments"
   | "savings"
+  | "loan-applications"
   | "loans"
   | "dividends"
   | "finance"
@@ -213,6 +215,9 @@ const Admin = () => {
           {(isAdmin || roles.includes("loan_officer") || roles.includes("finance_officer") || roles.includes("cashier")) && (
             <SidebarItem icon={<HandCoins className="size-4" />} active={section === "loans"} label="Loans" onClick={() => setSection("loans")} />
           )}
+          {(isAdmin || roles.includes("loan_officer")) && (
+            <SidebarItem icon={<FileSignature className="size-4" />} active={section === "loan-applications"} label="Loan Applications" onClick={() => setSection("loan-applications")} />
+          )}
           {(isAdmin || roles.includes("finance_officer")) && (
             <SidebarItem icon={<PieChart className="size-4" />} active={section === "dividends"} label="Dividends" onClick={() => setSection("dividends")} />
           )}
@@ -250,6 +255,7 @@ const Admin = () => {
                   : section === "payments" ? "Member Payments"
                   : section === "savings" ? "Savings"
                   : section === "loans" ? "Loans"
+                  : section === "loan-applications" ? "የብድር ማመልከቻ · Loan Applications"
                   : section === "dividends" ? "Share Dividends"
                   : "Finance / General Ledger"}
               </h1>
@@ -261,6 +267,7 @@ const Admin = () => {
                   : section === "payments" ? "Bank transfers · registration fees · monthly contributions"
                   : section === "savings" ? "Savings accounts & transactions"
                   : section === "loans" ? "Loan applications & repayments"
+                  : section === "loan-applications" ? "Dynamic Amharic loan application · auto-rate · 25% mandatory savings · 2% upfront · 30% late penalty"
                   : section === "dividends" ? "Annual share dividend distribution"
                   : "Chart of accounts & journal entries"}
               </p>
@@ -283,6 +290,7 @@ const Admin = () => {
             ["payments","Payments"],
             ["savings","Savings"],
             ["loans","Loans"],
+            ["loan-applications","Loan Apps"],
             ["dividends","Dividends"],
             ["finance","Finance"],
             ...(isAdmin ? [["staff", t.admin.tabs.staff] as const] : []),
@@ -300,6 +308,7 @@ const Admin = () => {
           {section === "payments" && <PaymentsModule />}
           {section === "savings" && <SavingsModule />}
           {section === "loans" && <LoansModule />}
+          {section === "loan-applications" && <LoanApplicationsModule />}
           {section === "dividends" && <DividendsModule />}
           {section === "finance" && <FinanceModule />}
           {section === "registrations" && (

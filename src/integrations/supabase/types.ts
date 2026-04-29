@@ -88,6 +88,188 @@ export type Database = {
           },
         ]
       }
+      loan_application_guarantors: {
+        Row: {
+          application_id: string
+          created_at: string
+          document_url: string | null
+          guarantor_member_id: string | null
+          guarantor_name: string | null
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          document_url?: string | null
+          guarantor_member_id?: string | null
+          guarantor_name?: string | null
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          document_url?: string | null
+          guarantor_member_id?: string | null
+          guarantor_name?: string | null
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_application_guarantors_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "loan_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_applications: {
+        Row: {
+          application_number: string
+          approved_at: string | null
+          approved_by: string | null
+          collateral_motor_chassis: string | null
+          collateral_owner: string | null
+          collateral_plate_or_title: string | null
+          collateral_type: string | null
+          collateral_value: number | null
+          committee_decision_date: string | null
+          created_at: string
+          created_by: string | null
+          doc_cheque: boolean
+          doc_fayda_kebele: boolean
+          doc_insurance: boolean
+          doc_marriage_cert: boolean
+          doc_member_booklet: boolean
+          doc_restraint_letter: boolean
+          doc_vehicle_house_title: boolean
+          end_month: string | null
+          id: string
+          insurance_fee: number
+          interest_rate: number
+          is_mor_staff: boolean
+          late_penalty_rate: number
+          loan_id: string | null
+          manager_name: string | null
+          mandatory_savings: number
+          member_id: string
+          monthly_income: number | null
+          monthly_installment: number
+          net_to_member: number
+          purpose: string | null
+          registration_id: string | null
+          rejected_reason: string | null
+          requested_amount: number
+          service_fee: number
+          start_month: string | null
+          status: string
+          term_months: number
+          total_payable: number
+          total_upfront_fees: number
+          updated_at: string
+          witness_1: string | null
+          witness_2: string | null
+          witness_3: string | null
+        }
+        Insert: {
+          application_number: string
+          approved_at?: string | null
+          approved_by?: string | null
+          collateral_motor_chassis?: string | null
+          collateral_owner?: string | null
+          collateral_plate_or_title?: string | null
+          collateral_type?: string | null
+          collateral_value?: number | null
+          committee_decision_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_cheque?: boolean
+          doc_fayda_kebele?: boolean
+          doc_insurance?: boolean
+          doc_marriage_cert?: boolean
+          doc_member_booklet?: boolean
+          doc_restraint_letter?: boolean
+          doc_vehicle_house_title?: boolean
+          end_month?: string | null
+          id?: string
+          insurance_fee?: number
+          interest_rate?: number
+          is_mor_staff?: boolean
+          late_penalty_rate?: number
+          loan_id?: string | null
+          manager_name?: string | null
+          mandatory_savings?: number
+          member_id: string
+          monthly_income?: number | null
+          monthly_installment?: number
+          net_to_member?: number
+          purpose?: string | null
+          registration_id?: string | null
+          rejected_reason?: string | null
+          requested_amount: number
+          service_fee?: number
+          start_month?: string | null
+          status?: string
+          term_months: number
+          total_payable?: number
+          total_upfront_fees?: number
+          updated_at?: string
+          witness_1?: string | null
+          witness_2?: string | null
+          witness_3?: string | null
+        }
+        Update: {
+          application_number?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          collateral_motor_chassis?: string | null
+          collateral_owner?: string | null
+          collateral_plate_or_title?: string | null
+          collateral_type?: string | null
+          collateral_value?: number | null
+          committee_decision_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          doc_cheque?: boolean
+          doc_fayda_kebele?: boolean
+          doc_insurance?: boolean
+          doc_marriage_cert?: boolean
+          doc_member_booklet?: boolean
+          doc_restraint_letter?: boolean
+          doc_vehicle_house_title?: boolean
+          end_month?: string | null
+          id?: string
+          insurance_fee?: number
+          interest_rate?: number
+          is_mor_staff?: boolean
+          late_penalty_rate?: number
+          loan_id?: string | null
+          manager_name?: string | null
+          mandatory_savings?: number
+          member_id?: string
+          monthly_income?: number | null
+          monthly_installment?: number
+          net_to_member?: number
+          purpose?: string | null
+          registration_id?: string | null
+          rejected_reason?: string | null
+          requested_amount?: number
+          service_fee?: number
+          start_month?: string | null
+          status?: string
+          term_months?: number
+          total_payable?: number
+          total_upfront_fees?: number
+          updated_at?: string
+          witness_1?: string | null
+          witness_2?: string | null
+          witness_3?: string | null
+        }
+        Relationships: []
+      }
       loan_disbursements: {
         Row: {
           disbursed_at: string
@@ -427,9 +609,11 @@ export type Database = {
           created_by: string | null
           date_of_birth: string | null
           email: string | null
+          employer: string | null
           full_name: string
           gender: string | null
           id: string
+          is_mor_staff: boolean
           member_number: string
           phone: string | null
           region: string | null
@@ -443,9 +627,11 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           email?: string | null
+          employer?: string | null
           full_name: string
           gender?: string | null
           id?: string
+          is_mor_staff?: boolean
           member_number: string
           phone?: string | null
           region?: string | null
@@ -459,9 +645,11 @@ export type Database = {
           created_by?: string | null
           date_of_birth?: string | null
           email?: string | null
+          employer?: string | null
           full_name?: string
           gender?: string | null
           id?: string
+          is_mor_staff?: boolean
           member_number?: string
           phone?: string | null
           region?: string | null
@@ -490,6 +678,7 @@ export type Database = {
           date_of_birth: string
           education: string | null
           email: string
+          employer: string | null
           full_name: string
           gender: string
           heir_full_name: string | null
@@ -504,6 +693,7 @@ export type Database = {
           id_front_url: string | null
           id_number: string
           id_type: string
+          is_mor_staff: boolean
           live_photo_url: string | null
           marital_status: string | null
           monthly_income: number | null
@@ -535,6 +725,7 @@ export type Database = {
           date_of_birth: string
           education?: string | null
           email: string
+          employer?: string | null
           full_name: string
           gender: string
           heir_full_name?: string | null
@@ -549,6 +740,7 @@ export type Database = {
           id_front_url?: string | null
           id_number: string
           id_type: string
+          is_mor_staff?: boolean
           live_photo_url?: string | null
           marital_status?: string | null
           monthly_income?: number | null
@@ -580,6 +772,7 @@ export type Database = {
           date_of_birth?: string
           education?: string | null
           email?: string
+          employer?: string | null
           full_name?: string
           gender?: string
           heir_full_name?: string | null
@@ -594,6 +787,7 @@ export type Database = {
           id_front_url?: string | null
           id_number?: string
           id_type?: string
+          is_mor_staff?: boolean
           live_photo_url?: string | null
           marital_status?: string | null
           monthly_income?: number | null
@@ -1000,6 +1194,10 @@ export type Database = {
         }[]
       }
       compute_loan_rate: { Args: { _term_months: number }; Returns: number }
+      compute_loan_rate_v2: {
+        Args: { _is_mor: boolean; _term_months: number }
+        Returns: number
+      }
       eligible_loan_max: { Args: { _member_id: string }; Returns: number }
       generate_loan_schedule: { Args: { _loan_id: string }; Returns: number }
       generate_referral_code: { Args: never; Returns: string }
@@ -1010,6 +1208,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      member_has_6_months: { Args: { _member_id: string }; Returns: boolean }
       submit_registration: {
         Args: { payload: Json }
         Returns: {
