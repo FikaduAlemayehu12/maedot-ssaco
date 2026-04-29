@@ -1119,4 +1119,589 @@ export const DividendsModule = () => {
       </div>
     </div>
   );
+};import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { Loader2, Plus, FileSignature, Search, Calculator, ShieldAlert, CheckCircle2, XCircle, FileText } from "lucide-react";
+
+const fmt = (n: number | null | undefined) =>
+  (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+type MemberLite = {
+  id: string;
+  member_number: string;
+  full_name: string;
+  phone: string | null;
+  is_mor_staff?: boolean | null;
+  employer?: string | null;
 };
+
+type LoanApp = {
+  id: string;
+  application_number: string;
+  member_id: string;
+  requested_amount: number;
+  term_months: number;
+  interest_rate: number;
+  monthly_installment: number;
+  total_payable: number;
+  mandatory_savings: number;
+  service_fee: number;
+  insurance_fee: number;
+  total_upfront_fees: number;
+  net_to_member: number;
+  status: string;
+  created_at: string;
+  is_mor_staff: boolean;
+  purpose: string | null;
+  collateral_owner: string | null;
+  collateral_value: number | null;
+  manager_name: string | null;
+  witness_1: string | null;
+  witness_2: string | null;
+  witness_3: string | null;
+  start_month: string | null;
+  end_month: string | null;
+  committee_decision_date: string | null;
+  monthly_income: number | null;
+};
+
+const blankForm = {
+  member_id: "",
+  requested_amount: "",
+  term_months: "36",
+  purpose: "",
+  monthly_income: "",
+  is_mor_staff: false,
+  // documents
+  doc_marriage_cert: false,
+  doc_fayda_kebele: false,
+  doc_member_booklet: false,
+  doc_vehicle_house_title: false,
+  doc_insurance: false,
+  doc_restraint_letter: false,
+  doc_cheque: false,
+  // collateral
+  collateral_owner: "",
+  collateral_plate_or_title: "",
+  collateral_motor_chassis: "",
+  collateral_type: "",
+  collateral_value: "",
+  // governance
+  witness_1: "",
+  witness_2: "",
+  witness_3: "",
+  manager_name: "",
+  committee_decision_date: new Date().toISOString().slice(0, 10),
+  start_month: new Date().toISOString().slice(0, 7) + "-01",
+};
+
+export const LoanApplicationsModule = () => {
+  const [rows, setRows] = useState<LoanApp[]>([]);
+  const [members, setMembers] = useState<MemberLite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [q, setQ] = useState("");
+  const [form, setForm] = useState({ ...blankForm });
+  const [eligible6mo, setEligible6mo] = useState<boolean | null>(null);
+  const [maxEligible, setMaxEligible] = useState<number | null>(null);
+  const [viewing, setViewing] = useState<LoanApp | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const [a, m] = await Promise.all([
+      supabase.from("loan_applications").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("members").select("id,member_number,full_name,phone,is_mor_staff,employer").limit(1000),
+    ]);
+    setLoading(false);
+    if (a.error) toast({ title: a.error.message, variant: "destructive" });
+    setRows((a.data ?? []) as LoanApp[]);
+    setMembers((m.data ?? []) as MemberLite[]);
+  };
+  useEffect(() => { load(); }, []);
+
+  // When member changes: pull MoR flag, eligibility (4×), and 6-month membership check
+  useEffect(() => {
+    if (!form.member_id) { setEligible6mo(null); setMaxEligible(null); return; }
+    const mem = members.find(x => x.id === form.member_id);
+    if (mem) setForm(f => ({ ...f, is_mor_staff: !!mem.is_mor_staff }));
+    (async () => {
+      const [{ data: max }, { data: ok }] = await Promise.all([
+        supabase.rpc("eligible_loan_max", { _member_id: form.member_id }),
+        supabase.rpc("member_has_6_months", { _member_id: form.member_id }),
+      ]);
+      if (max != null) setMaxEligible(Number(max));
+      setEligible6mo(Boolean(ok));
+    })();
+  }, [form.member_id]);
+
+  // Compute interest rate
+  const interestRate = useMemo(() => {
+    if (form.is_mor_staff) return 0.15;
+    const t = Number(form.term_months);
+    if (t <= 36) return 0.15;
+    if (t <= 48) return 0.16;
+    return 0.17;
+  }, [form.term_months, form.is_mor_staff]);
+
+  const computed = useMemo(() => {
+    const P = Number(form.requested_amount) || 0;
+    const n = Number(form.term_months) || 0;
+    const r = interestRate / 12;
+    const monthly = !P || !n ? 0 : (r === 0 ? P / n : (P * r) / (1 - Math.pow(1 + r, -n)));
+    const total = monthly * n;
+    const mandatory = P * 0.25;
+    const svc = P * 0.01;
+    const ins = P > 300000 ? P * 0.015 : P * 0.01;
+    const fees = svc + ins;
+    const net = P - fees;
+    return { monthly, total, mandatory, svc, ins, fees, net };
+  }, [form.requested_amount, form.term_months, interestRate]);
+
+  const memberOf = (id: string) => members.find(m => m.id === id);
+
+  const submit = async () => {
+    if (!form.member_id || !form.requested_amount) {
+      return toast({ title: "Member and amount required", variant: "destructive" });
+    }
+    if (eligible6mo === false) {
+      return toast({ title: "የአባልነት ብቃት የለም", description: "Member must have at least 6 months of verified membership.", variant: "destructive" });
+    }
+    const P = Number(form.requested_amount);
+    if (maxEligible != null && P > maxEligible) {
+      return toast({ title: "Exceeds 4× savings eligibility", description: `Max: ${fmt(maxEligible)} ETB`, variant: "destructive" });
+    }
+    setBusy(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const start = new Date(form.start_month);
+    const end = new Date(start); end.setMonth(end.getMonth() + Number(form.term_months));
+    const payload = {
+      member_id: form.member_id,
+      requested_amount: P,
+      term_months: Number(form.term_months),
+      purpose: form.purpose || null,
+      monthly_income: form.monthly_income ? Number(form.monthly_income) : null,
+      is_mor_staff: form.is_mor_staff,
+      doc_marriage_cert: form.doc_marriage_cert,
+      doc_fayda_kebele: form.doc_fayda_kebele,
+      doc_member_booklet: form.doc_member_booklet,
+      doc_vehicle_house_title: form.doc_vehicle_house_title,
+      doc_insurance: form.doc_insurance,
+      doc_restraint_letter: form.doc_restraint_letter,
+      doc_cheque: form.doc_cheque,
+      interest_rate: interestRate,
+      monthly_installment: Number(computed.monthly.toFixed(2)),
+      total_payable: Number(computed.total.toFixed(2)),
+      mandatory_savings: Number(computed.mandatory.toFixed(2)),
+      service_fee: Number(computed.svc.toFixed(2)),
+      insurance_fee: Number(computed.ins.toFixed(2)),
+      total_upfront_fees: Number(computed.fees.toFixed(2)),
+      net_to_member: Number(computed.net.toFixed(2)),
+      late_penalty_rate: 0.30,
+      collateral_owner: form.collateral_owner || null,
+      collateral_plate_or_title: form.collateral_plate_or_title || null,
+      collateral_motor_chassis: form.collateral_motor_chassis || null,
+      collateral_type: form.collateral_type || null,
+      collateral_value: form.collateral_value ? Number(form.collateral_value) : null,
+      witness_1: form.witness_1 || null,
+      witness_2: form.witness_2 || null,
+      witness_3: form.witness_3 || null,
+      manager_name: form.manager_name || null,
+      committee_decision_date: form.committee_decision_date || null,
+      start_month: form.start_month || null,
+      end_month: end.toISOString().slice(0, 10),
+      status: "submitted",
+      created_by: user?.id ?? null,
+    } as const;
+    const { error } = await supabase.from("loan_applications").insert(payload);
+    setBusy(false);
+    if (error) return toast({ title: "Submission failed", description: error.message, variant: "destructive" });
+    toast({ title: "ማመልከቻ ተልኳል", description: "Loan application submitted for committee review." });
+    setForm({ ...blankForm });
+    setShowForm(false);
+    load();
+  };
+
+  const decide = async (app: LoanApp, status: "approved" | "rejected") => {
+    const reason = status === "rejected" ? window.prompt("Reason for rejection?") ?? "" : "";
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("loan_applications").update({
+      status, approved_by: user?.id ?? null, approved_at: new Date().toISOString(),
+      rejected_reason: status === "rejected" ? reason : null,
+    }).eq("id", app.id);
+    if (error) return toast({ title: error.message, variant: "destructive" });
+    toast({ title: `Application ${status}` });
+    load();
+  };
+
+  const filtered = rows.filter(r => {
+    if (!q) return true;
+    const m = memberOf(r.member_id);
+    const hay = `${r.application_number} ${m?.full_name ?? ""} ${m?.member_number ?? ""}`.toLowerCase();
+    return hay.includes(q.toLowerCase());
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card rounded-2xl border shadow-card-soft">
+        <div className="p-3 sm:p-4 border-b flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+          <div>
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <FileSignature className="size-4 text-primary" />
+              የብድር ማመልከቻዎች · Loan Applications ({rows.length})
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Dynamic Amharic loan form · auto-rate (15/16/17%, MoR flat 15%) · 25% mandatory savings · 2% upfront fees · 30% late penalty
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search application or member..." className="pl-9" />
+            </div>
+            <Button size="sm" variant="hero" onClick={() => setShowForm(s => !s)}>
+              <Plus className="size-4" /> አዲስ ማመልከቻ
+            </Button>
+          </div>
+        </div>
+
+        {showForm && (
+          <div className="p-4 border-b bg-muted/30 space-y-5">
+            {/* Member link */}
+            <section>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">አባል (Linked Member)</div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <Label className="text-xs">ሙሉ ስም / የአባል ቁጥር</Label>
+                  <Select value={form.member_id} onValueChange={v => setForm({ ...form, member_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="ተበዳሪውን ይምረጡ..." /></SelectTrigger>
+                    <SelectContent>
+                      {members.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.member_number} — {m.full_name}{m.is_mor_staff ? " · MoR" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card w-full">
+                    <Checkbox id="mor" checked={form.is_mor_staff} onCheckedChange={v => setForm({ ...form, is_mor_staff: !!v })} />
+                    <Label htmlFor="mor" className="text-xs cursor-pointer">የገቢዎች ሚኒስቴር ሰራተኛ (MoR · flat 15%)</Label>
+                  </div>
+                </div>
+              </div>
+              {form.member_id && (
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  {eligible6mo === false && (
+                    <Badge variant="outline" className="border-destructive/40 text-destructive gap-1">
+                      <ShieldAlert className="size-3" /> 6 ወር አባልነት አልተሟላም
+                    </Badge>
+                  )}
+                  {eligible6mo === true && (
+                    <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 gap-1">
+                      <CheckCircle2 className="size-3" /> 6+ ወር አባልነት ተሟልቷል
+                    </Badge>
+                  )}
+                  {maxEligible != null && (
+                    <Badge variant="outline" className="border-primary/30 text-primary">
+                      ከፍተኛ ብድር (4× ቁጠባ): {fmt(maxEligible)} ETB
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Loan request */}
+            <section>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">የብድር ጥያቄ</div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">የተጠየቀው የብድር መጠን (ETB)</Label>
+                  <Input type="number" value={form.requested_amount} onChange={e => setForm({ ...form, requested_amount: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">የክፍያ ጊዜ (ወራት)</Label>
+                  <Select value={form.term_months} onValueChange={v => setForm({ ...form, term_months: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="12">12 ወር (1 ዓመት)</SelectItem>
+                      <SelectItem value="24">24 ወር (2 ዓመት)</SelectItem>
+                      <SelectItem value="36">36 ወር (3 ዓመት · 15%)</SelectItem>
+                      <SelectItem value="48">48 ወር (4 ዓመት · 16%)</SelectItem>
+                      <SelectItem value="60">60 ወር (5 ዓመት · 17%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">ወርሃዊ ገቢ (ETB)</Label>
+                  <Input type="number" value={form.monthly_income} onChange={e => setForm({ ...form, monthly_income: e.target.value })} />
+                </div>
+                <div className="sm:col-span-3">
+                  <Label className="text-xs">ብድሩ የተጠየቀበት ዓላማ</Label>
+                  <Textarea rows={2} value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} />
+                </div>
+              </div>
+            </section>
+
+            {/* Document checklist */}
+            <section>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ያቀረቧቸው ሰነዶች</div>
+              <div className="grid sm:grid-cols-3 gap-2 text-sm">
+                {[
+                  ["doc_marriage_cert", "የጋብቻ ሰርተፍኬት"],
+                  ["doc_fayda_kebele", "የፋይዳ / የቀበሌ መታወቂያ"],
+                  ["doc_member_booklet", "የአባል ደብተር"],
+                  ["doc_vehicle_house_title", "የመኪና ሊብሬ / የቤት ካርታ"],
+                  ["doc_insurance", "ኢንሹራንስ"],
+                  ["doc_restraint_letter", "የእግድ ደብዳቤ"],
+                  ["doc_cheque", "ቼክ"],
+                ].map(([k, label]) => (
+                  <label key={k} className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card cursor-pointer">
+                    <Checkbox
+                      checked={(form as any)[k]}
+                      onCheckedChange={v => setForm({ ...form, [k]: !!v } as any)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            {/* Collateral */}
+            <section>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">የብድሩ ዋስትና</div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div><Label className="text-xs">ባለቤት</Label><Input value={form.collateral_owner} onChange={e => setForm({ ...form, collateral_owner: e.target.value })} /></div>
+                <div><Label className="text-xs">የሰሌዳ / የካርታ ቁጥር</Label><Input value={form.collateral_plate_or_title} onChange={e => setForm({ ...form, collateral_plate_or_title: e.target.value })} /></div>
+                <div><Label className="text-xs">የሞተር / የሻንሲ / የይዞታ ቁጥር</Label><Input value={form.collateral_motor_chassis} onChange={e => setForm({ ...form, collateral_motor_chassis: e.target.value })} /></div>
+                <div><Label className="text-xs">ዓይነት</Label><Input value={form.collateral_type} onChange={e => setForm({ ...form, collateral_type: e.target.value })} /></div>
+                <div><Label className="text-xs">የንብረት ግምት መጠን (ETB)</Label><Input type="number" value={form.collateral_value} onChange={e => setForm({ ...form, collateral_value: e.target.value })} /></div>
+              </div>
+            </section>
+
+            {/* Governance */}
+            <section>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ምስክሮች እና ሥራ አስኪያጅ</div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div><Label className="text-xs">ምስክር 1</Label><Input value={form.witness_1} onChange={e => setForm({ ...form, witness_1: e.target.value })} /></div>
+                <div><Label className="text-xs">ምስክር 2</Label><Input value={form.witness_2} onChange={e => setForm({ ...form, witness_2: e.target.value })} /></div>
+                <div><Label className="text-xs">ምስክር 3</Label><Input value={form.witness_3} onChange={e => setForm({ ...form, witness_3: e.target.value })} /></div>
+                <div><Label className="text-xs">ሥራ አስኪያጅ ስም</Label><Input value={form.manager_name} onChange={e => setForm({ ...form, manager_name: e.target.value })} /></div>
+                <div><Label className="text-xs">የኮሚቴ ውሳኔ ቀን</Label><Input type="date" value={form.committee_decision_date} onChange={e => setForm({ ...form, committee_decision_date: e.target.value })} /></div>
+                <div><Label className="text-xs">ብድሩ የሚወሰድበት ወር</Label><Input type="date" value={form.start_month} onChange={e => setForm({ ...form, start_month: e.target.value })} /></div>
+              </div>
+            </section>
+
+            {/* Auto computed */}
+            <section className="bg-card border rounded-lg p-3 sm:p-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                <Calculator className="size-3.5" /> በራስ ሰር ስሌት
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <Stat label="የወለድ መጠን" value={`${(interestRate * 100).toFixed(0)}%`} tone="primary" />
+                <Stat label="ወርሃዊ ክፍያ" value={`${fmt(computed.monthly)} ETB`} />
+                <Stat label="ጠቅላላ ክፍያ" value={`${fmt(computed.total)} ETB`} />
+                <Stat label="25% ግዴታ ቁጠባ" value={`${fmt(computed.mandatory)} ETB`} />
+                <Stat label="የአገልግሎት ክፍያ (1%)" value={`${fmt(computed.svc)} ETB`} />
+                <Stat label="ኢንሹራንስ" value={`${fmt(computed.ins)} ETB`} />
+                <Stat label="ጠቅላላ ቅድሚያ ክፍያ" value={`${fmt(computed.fees)} ETB`} />
+                <Stat label="ለአባል የሚሰጥ ዕላፊ" value={`${fmt(computed.net)} ETB`} tone="success" />
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-2">
+                የዘገየ ክፍያ መቀጮ: 30% ከወርሃዊ ክፍያ ላይ (አንቀጽ 3.6)
+              </div>
+            </section>
+
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={() => { setShowForm(false); setForm({ ...blankForm }); }}>ሰርዝ</Button>
+              <Button size="sm" variant="hero" onClick={submit} disabled={busy}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <FileSignature className="size-4" />} ማመልከቻ ላክ
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="p-12 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground text-sm">ምንም ማመልከቻ የለም</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40">
+                  <th className="px-4 py-3">App #</th>
+                  <th className="px-4 py-3">አባል</th>
+                  <th className="px-4 py-3 text-right">መጠን</th>
+                  <th className="px-4 py-3 text-right">ወለድ</th>
+                  <th className="px-4 py-3 text-right">ወርሃዊ</th>
+                  <th className="px-4 py-3">ሁኔታ</th>
+                  <th className="px-4 py-3 text-right">እርምጃ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.map(r => {
+                  const m = memberOf(r.member_id);
+                  const tone = r.status === "approved" ? "border-emerald-500/30 text-emerald-700"
+                    : r.status === "submitted" || r.status === "under_review" ? "border-primary/30 text-primary"
+                    : r.status === "rejected" ? "border-destructive/30 text-destructive"
+                    : "border-muted-foreground/30 text-muted-foreground";
+                  return (
+                    <tr key={r.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{r.application_number}</td>
+                      <td className="px-4 py-3">{m ? `${m.member_number} — ${m.full_name}` : "—"}{r.is_mor_staff && <Badge variant="outline" className="ml-1 text-[10px]">MoR</Badge>}</td>
+                      <td className="px-4 py-3 text-right font-mono">{fmt(r.requested_amount)}</td>
+                      <td className="px-4 py-3 text-right font-mono">{(r.interest_rate * 100).toFixed(0)}%</td>
+                      <td className="px-4 py-3 text-right font-mono">{fmt(r.monthly_installment)}</td>
+                      <td className="px-4 py-3"><Badge variant="outline" className={tone}>{r.status}</Badge></td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => setViewing(r)}><FileText className="size-3.5" /></Button>
+                          {(r.status === "submitted" || r.status === "under_review") && (
+                            <>
+                              <Button size="sm" variant="ghost" className="text-emerald-700" onClick={() => decide(r, "approved")}><CheckCircle2 className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => decide(r, "rejected")}><XCircle className="size-3.5" /></Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {viewing && (
+        <ContractView app={viewing} member={memberOf(viewing.member_id) ?? null} onClose={() => setViewing(null)} />
+      )}
+    </div>
+  );
+};
+
+const Stat = ({ label, value, tone }: { label: string; value: string; tone?: "primary" | "success" }) => (
+  <div className={`rounded-md border p-2 ${tone === "primary" ? "border-primary/30 bg-primary/5" : tone === "success" ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-muted/30"}`}>
+    <div className="text-muted-foreground">{label}</div>
+    <div className="font-mono font-semibold">{value}</div>
+  </div>
+);
+
+/* ---------------- Amharic Contract / Application View ---------------- */
+
+const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLite | null; onClose: () => void }) => {
+  const name = member?.full_name ?? "[የተበዳሪ ስም]";
+  const amount = fmt(app.requested_amount);
+  const total = fmt(app.total_payable);
+  const monthly = fmt(app.monthly_installment);
+  const ratePct = (app.interest_rate * 100).toFixed(0);
+  const start = app.start_month ? new Date(app.start_month) : null;
+  const end = app.end_month ? new Date(app.end_month) : null;
+  const startMonth = start ? start.toLocaleDateString("am-ET", { month: "long" }) : "________";
+  const startYear = start ? start.getFullYear() : "____";
+  const endMonth = end ? end.toLocaleDateString("am-ET", { month: "long" }) : "________";
+  const endYear = end ? end.getFullYear() : "____";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-card max-w-3xl w-full rounded-2xl border shadow-xl my-8" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b flex items-center justify-between">
+          <div className="font-semibold">{app.application_number} · የብድር ማመልከቻ እና የውል ስምምነት</div>
+          <Button size="sm" variant="ghost" onClick={onClose}>ዝጋ</Button>
+        </div>
+        <div className="p-6 space-y-5 text-sm leading-relaxed max-h-[70vh] overflow-y-auto" lang="am">
+          <div>
+            <h3 className="font-bold text-base mb-2">በማዕዶት የገ/ቁ/ብ//ኃላ/የተ/የመ/የኅ/ሥራ ማህበር የብድር ማመልከቻ ቅፅ</h3>
+            <p>
+              የብድር ኮሚቴው {app.committee_decision_date ?? "____/__/____"} ዓ.ም ተሰብስቦ በ<b>{name}</b> ብር <b>{amount}</b> እንዲሰጣቸው የቀረበውን የብድር ማመልከቻ
+              በብድር አሰጣጥ መመሪያው መሠረት ሁኔታውን ከመረመረ በኋላ በአኃዝ ብር <b>{amount}</b> ብር በ{startMonth} ወር {startYear} ዓ.ም ወስደው በ{endMonth} ወር {endYear} ዓ.ም በ
+              <b>{app.term_months}</b> ወራት ተከፍሎ የሚያልቅ ብድር እንዲሰጣቸው ወስኗል፡፡
+            </p>
+          </div>
+          <Row k="ተበዳሪው አማካኝ የወር ገቢ" v={app.monthly_income ? `${fmt(app.monthly_income)} ETB` : "—"} />
+          <Row k="ብድሩ የተጠየቀበት ዓላማ" v={app.purpose ?? "—"} />
+
+          <div>
+            <h4 className="font-semibold mb-1">የብድሩ መጠን እና የክፍያ ሁኔታ</h4>
+            <Row k="የተጠየቀው የብድር መጠን" v={`${amount} ETB`} />
+            <Row k="ተከፍሎ የሚያልቅበት" v={`${app.term_months} ወራት`} />
+            <Row k="የወለድ መጠን" v={`${ratePct}%${app.is_mor_staff ? " (MoR flat)" : ""}`} />
+            <Row k="ወርሃዊ የብድር ክፍያ" v={`${monthly} ETB`} />
+            <Row k="25% የግዴታ ቁጠባ" v={`${fmt(app.mandatory_savings)} ETB`} />
+          </div>
+
+          <div className="border-t pt-3">
+            <h4 className="font-semibold">አንቀጽ 1፡ የብድር መጠን</h4>
+            <p>
+              በዚህ ውል መሠረት የተበደሩትን ዋና <b>{amount}</b> ብር፤ ከወለዱ እና ከልዩ ልዩ ወጪዎች ጋር የሚታሰብ ጠቅላላ <b>{total}</b> ብር በ{endMonth} ወር {endYear} ዓ.ም ተከፍሎ የሚጠናቀቅ
+              ብድር አበዳሪው ለተበዳሪ አበድሯል፡፡
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold">አንቀጽ 3፡ የብድር ክፍያ ሁኔታ</h4>
+            <p>3.1 ተበዳሪው የብድር ገንዘብ ከወለዱና ከልዩ ልዩ ወጪዎች ጋር ከ{startMonth} ወር {startYear} ዓ.ም ጀምሮ በየወሩ ብር <b>{monthly}</b> ያለማቋረጥ ለ<b>{app.term_months}</b> ወራት ለመክፈል ተስማምተዋል፡፡</p>
+            <p>3.6 ተበዳሪው ክፍያ ባዘገየው ቀናት ከወርሃዊ ክፍያ ላይ <b>30%</b> (ሰላሳ በመቶ) መቀጮ የመክፈል ግዴታ አለበት፡፡</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold">አንቀጽ 4፡ ወለድ</h4>
+            <p>4.1 በተሰጠው ብድር ላይ በዓመት <b>{ratePct}%</b> ወለድ በየዕለቱ ባለው የብድር ገንዘብ መጠን ላይ በየወሩ ይታሰባል፡፡</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold">አንቀጽ 7፡ የተበዳሪው ግዴታዎች</h4>
+            <p>7.1 ለአገልግሎት ክፍያ (Service Charge) እና መድን (Insurance) 2% ማለትም ብር <b>{fmt(app.total_upfront_fees)}</b> ብር በቅድሚያ መክፈል ይኖርበታል፡፡</p>
+            <p>7.2 የብድር ገንዘቡ 25% ብር <b>{fmt(app.mandatory_savings)}</b> ብር በቅድሚያ የመቆጠብ ግዴታ አለበት፡፡</p>
+            <p>7.4 ተበዳሪው መደበኛ ቁጠባን ጨምሮ በየወሩ ብር <b>{fmt(app.monthly_installment + app.mandatory_savings / app.term_months)}</b> ገቢ የማድረግ ግዴታ አለበት፡፡</p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold">አንቀጽ 8፡ የብድሩ ዋስትና</h4>
+            <p>8.1 ለብድሩ ዋስትና የቀረበው ንብረት ግምት ብር <b>{app.collateral_value ? fmt(app.collateral_value) : "—"}</b> ብር ነው፡፡</p>
+            <div className="ml-4 text-[13px]">
+              <Row k="ባለቤት" v={app.collateral_owner ?? "—"} />
+              <Row k="የሰሌዳ/የካርታ ቁጥር" v={(app as any).collateral_plate_or_title ?? "—"} />
+              <Row k="የሞተር/የሻንሲ/የይዞታ ቁጥር" v={(app as any).collateral_motor_chassis ?? "—"} />
+              <Row k="ዓይነት" v={(app as any).collateral_type ?? "—"} />
+            </div>
+          </div>
+
+          <div className="border-t pt-3 space-y-1">
+            <h4 className="font-semibold">የስምምነት ማረጋገጫ</h4>
+            <p>ተበዳሪ: እኔ <b>{name}</b> የብድር ውሉን ጠቅላላ ይዘት አንብቤ መብትና ግዴታዬን ከተረዳሁ በኋላ በፈቃደኝነት ፈርሜያለሁ፡፡</p>
+            <p>ፊርማ: _________________ ቀን: _________________</p>
+            <p className="mt-2">አበዳሪ: እኔ <b>{app.manager_name ?? "[የሥራ አስኪያጅ ስም]"}</b> የማህበሩ ስራ አስኪያጅ አበዳሪን በመወከል የውሉን ይዘት አስረድቼ ማስፈረሜን አረጋግጣለሁ፡፡</p>
+            <p>ፊርማ: _________________ ቀን: _________________</p>
+            <div className="mt-3">
+              <div>ምስክሮች:</div>
+              <div>ስም: <b>{app.witness_1 ?? "_______________"}</b> ፊርማ: ___________</div>
+              <div>ስም: <b>{app.witness_2 ?? "_______________"}</b> ፊርማ: ___________</div>
+              <div>ስም: <b>{app.witness_3 ?? "_______________"}</b> ፊርማ: ___________</div>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 border-t flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.print()}>አትም / Print</Button>
+          <Button size="sm" variant="hero" onClick={onClose}>ዝጋ</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Row = ({ k, v }: { k: string; v: string }) => (
+  <div className="flex gap-2"><span className="text-muted-foreground min-w-[180px]">{k}:</span><span className="font-medium">{v}</span></div>
+);
