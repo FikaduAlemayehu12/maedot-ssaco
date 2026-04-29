@@ -34,7 +34,7 @@ export const Hero = () => (
             <Link to="/admin/login"><LogIn className="size-4" /> Login</Link>
           </Button>
           <Button variant="outline" size="xl" asChild>
-            <Link to="/register"><Wallet className="size-4" /> Apply Loan</Link>
+            <Link to="/apply-loan"><Wallet className="size-4" /> Apply Loan</Link>
           </Button>
         </div>
 
