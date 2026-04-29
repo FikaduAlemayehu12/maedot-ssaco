@@ -11,6 +11,7 @@ import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
   LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen, Receipt, PieChart,
+  FileSignature,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -19,7 +20,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
-  PaymentsModule, DividendsModule,
+  PaymentsModule, DividendsModule, LoanApplicationsModule,
 } from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
@@ -34,6 +35,7 @@ type Section =
   | "members"
   | "payments"
   | "savings"
+  | "loan-applications"
   | "loans"
   | "dividends"
   | "finance"
