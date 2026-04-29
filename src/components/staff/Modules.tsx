@@ -1312,7 +1312,7 @@ export const LoanApplicationsModule = () => {
       status: "submitted",
       created_by: user?.id ?? null,
     };
-    const { error } = await supabase.from("loan_applications").insert(payload);
+    const { error } = await supabase.from("loan_applications").insert(payload as any);
     setBusy(false);
     if (error) return toast({ title: "Submission failed", description: error.message, variant: "destructive" });
     toast({ title: "ማመልከቻ ተልኳል", description: "Loan application submitted for committee review." });
