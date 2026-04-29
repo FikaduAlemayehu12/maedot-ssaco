@@ -1208,6 +1208,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_member_for_loan: {
+        Args: { _dob?: string; _member_number: string; _phone?: string }
+        Returns: {
+          full_name: string
+          is_mor_staff: boolean
+          member_id: string
+        }[]
+      }
       member_has_6_months: { Args: { _member_id: string }; Returns: boolean }
       submit_registration: {
         Args: { payload: Json }

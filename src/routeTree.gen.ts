@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ApplyLoanRouteImport } from './routes/apply-loan'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
@@ -23,6 +24,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApplyLoanRoute = ApplyLoanRouteImport.update({
+  id: '/apply-loan',
+  path: '/apply-loan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -44,6 +50,7 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/apply-loan': typeof ApplyLoanRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/admin/login': typeof AdminLoginRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/apply-loan': typeof ApplyLoanRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/admin/login': typeof AdminLoginRoute
@@ -59,21 +67,36 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/apply-loan': typeof ApplyLoanRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/admin_/login': typeof AdminLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/register' | '/admin/login'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/apply-loan'
+    | '/login'
+    | '/register'
+    | '/admin/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/register' | '/admin/login'
-  id: '__root__' | '/' | '/admin' | '/login' | '/register' | '/admin_/login'
+  to: '/' | '/admin' | '/apply-loan' | '/login' | '/register' | '/admin/login'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/apply-loan'
+    | '/login'
+    | '/register'
+    | '/admin_/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  ApplyLoanRoute: typeof ApplyLoanRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   AdminLoginRoute: typeof AdminLoginRoute
@@ -93,6 +116,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apply-loan': {
+      id: '/apply-loan'
+      path: '/apply-loan'
+      fullPath: '/apply-loan'
+      preLoaderRoute: typeof ApplyLoanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -122,6 +152,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  ApplyLoanRoute: ApplyLoanRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   AdminLoginRoute: AdminLoginRoute,
@@ -129,12 +160,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

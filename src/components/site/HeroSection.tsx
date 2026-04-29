@@ -52,7 +52,7 @@ export const HeroSection = () => {
             <Link to="/register">{t.hero.registerNow} <ArrowRight className="size-4" /></Link>
           </Button>
           <Button variant="outline" size="xl" asChild>
-            <Link to="/register">{t.hero.applyLoan}</Link>
+            <Link to="/apply-loan">{t.hero.applyLoan}</Link>
           </Button>
         </div>
 
