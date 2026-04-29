@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -12,6 +14,7 @@ import {
   Loader2, Plus, Users, Wallet, HandCoins, BookOpen, Search,
   TrendingUp, TrendingDown, CircleDollarSign,
   Upload, ShieldCheck, Calculator, FileText, Receipt, Calendar, Percent,
+  FileSignature, ShieldAlert,
 } from "lucide-react";
 
 /* ---------------- Shared UI ---------------- */
@@ -1119,22 +1122,8 @@ export const DividendsModule = () => {
       </div>
     </div>
   );
-};import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
-import { Loader2, Plus, FileSignature, Search, Calculator, ShieldAlert, CheckCircle2, XCircle, FileText } from "lucide-react";
+};
 
-const fmt = (n: number | null | undefined) =>
-  (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 type MemberLite = {
   id: string;
@@ -1322,7 +1311,7 @@ export const LoanApplicationsModule = () => {
       end_month: end.toISOString().slice(0, 10),
       status: "submitted",
       created_by: user?.id ?? null,
-    } as const;
+    };
     const { error } = await supabase.from("loan_applications").insert(payload);
     setBusy(false);
     if (error) return toast({ title: "Submission failed", description: error.message, variant: "destructive" });
