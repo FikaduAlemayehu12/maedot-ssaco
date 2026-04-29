@@ -67,8 +67,8 @@ export default function ApplyLoan() {
     setVerifying(true);
     const { data, error } = await supabase.rpc("lookup_member_for_loan", {
       _member_number: memberNumber.trim(),
-      _phone: phone.trim() || null,
-      _dob: dob || null,
+      _phone: phone.trim() || undefined,
+      _dob: dob || undefined,
     });
     setVerifying(false);
     if (error) return toast({ title: "Lookup failed", description: error.message, variant: "destructive" });
@@ -242,7 +242,7 @@ export default function ApplyLoan() {
               </Button>
             </div>
             <div className="mt-4 text-xs text-muted-foreground">
-              አባል አይደሉም? <Link to="/register" className="text-primary font-semibold">እዚህ ይመዝገቡ</Link>
+              አባል አይደሉም? <Link to="/register" search={{ ref: undefined }} className="text-primary font-semibold">እዚህ ይመዝገቡ</Link>
             </div>
           </div>
         ) : (
