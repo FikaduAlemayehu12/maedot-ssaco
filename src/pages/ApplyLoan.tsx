@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Loader2, Search, ShieldCheck, ShieldAlert, CheckCircle2,
@@ -40,6 +41,9 @@ export default function ApplyLoan() {
     purpose: "",
     monthly_income: "",
     is_mor_staff: false,
+    is_emergency: false,
+    emergency_type: "health",
+    emergency_reason: "",
     doc_marriage_cert: false,
     doc_fayda_kebele: false,
     doc_member_booklet: false,
@@ -113,8 +117,11 @@ export default function ApplyLoan() {
     if (!form.requested_amount || Number(form.requested_amount) <= 0) {
       return toast({ title: "የብድር መጠን ያስፈልጋል", variant: "destructive" });
     }
-    if (eligible6mo === false) {
+    if (eligible6mo === false && !form.is_emergency) {
       return toast({ title: "የአባልነት ብቃት የለም", description: "ቢያንስ 6 ወር አባልነት ያስፈልጋል.", variant: "destructive" });
+    }
+    if (form.is_emergency && !form.emergency_reason.trim()) {
+      return toast({ title: "ምክንያት ያስፈልጋል", description: "Please provide an emergency reason.", variant: "destructive" });
     }
     const P = Number(form.requested_amount);
     if (maxEligible != null && P > maxEligible) {
@@ -146,6 +153,9 @@ export default function ApplyLoan() {
       total_upfront_fees: Number(computed.fees.toFixed(2)),
       net_to_member: Number(computed.net.toFixed(2)),
       late_penalty_rate: 0.30,
+      is_emergency: form.is_emergency,
+      emergency_type: form.is_emergency ? form.emergency_type : null,
+      emergency_reason: form.is_emergency ? form.emergency_reason : null,
       collateral_owner: form.collateral_owner || null,
       collateral_plate_or_title: form.collateral_plate_or_title || null,
       collateral_motor_chassis: form.collateral_motor_chassis || null,
@@ -257,9 +267,14 @@ export default function ApplyLoan() {
                 <div className="text-xs text-muted-foreground">Member #{memberNumber}{member.is_mor_staff ? " · MoR staff" : ""}</div>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                {eligible6mo === false && (
+                {eligible6mo === false && !form.is_emergency && (
                   <Badge variant="outline" className="border-destructive/40 text-destructive gap-1">
                     <ShieldAlert className="size-3" /> 6 ወር አባልነት አልተሟላም
+                  </Badge>
+                )}
+                {eligible6mo === false && form.is_emergency && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 gap-1">
+                    <ShieldAlert className="size-3" /> አስቸኳይ ብድር — 6 ወር ብቃት ተዘሏል
                   </Badge>
                 )}
                 {eligible6mo === true && (
@@ -303,6 +318,33 @@ export default function ApplyLoan() {
                   <Input type="date" value={form.start_month} onChange={e => setForm({ ...form, start_month: e.target.value })} />
                 </div>
               </div>
+            </section>
+
+            {/* Emergency loan */}
+            <section className="bg-card border rounded-2xl p-5 shadow-card-soft">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={form.is_emergency} onCheckedChange={v => setForm({ ...form, is_emergency: !!v })} />
+                <span className="text-sm font-semibold">የአስቸኳይ ብድር (ጤና / ማህበራዊ) — Emergency loan (skips 6-month rule)</span>
+              </label>
+              {form.is_emergency && (
+                <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <Label className="text-xs">ዓይነት · Type</Label>
+                    <Select value={form.emergency_type} onValueChange={v => setForm({ ...form, emergency_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="health">የጤና (Health)</SelectItem>
+                        <SelectItem value="social">ማህበራዊ (Social)</SelectItem>
+                        <SelectItem value="other">ሌላ (Other)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">ምክንያት · Reason *</Label>
+                    <Textarea rows={2} value={form.emergency_reason} onChange={e => setForm({ ...form, emergency_reason: e.target.value })} />
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Computed */}
@@ -375,7 +417,7 @@ export default function ApplyLoan() {
               <div className="text-xs text-muted-foreground">
                 ማመልከቻዎ ለማህበሩ ኮሚቴ ይላካል። ውሳኔ በ7 የስራ ቀናት ውስጥ ይመለሳል።
               </div>
-              <Button variant="hero" size="lg" onClick={submit} disabled={busy || eligible6mo === false}>
+              <Button variant="hero" size="lg" onClick={submit} disabled={busy || (eligible6mo === false && !form.is_emergency)}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <FileSignature className="size-4" />}
                 ማመልከቻ አስገባ · Submit Application
               </Button>

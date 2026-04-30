@@ -146,10 +146,13 @@ export type Database = {
           doc_member_booklet: boolean
           doc_restraint_letter: boolean
           doc_vehicle_house_title: boolean
+          emergency_reason: string | null
+          emergency_type: string | null
           end_month: string | null
           id: string
           insurance_fee: number
           interest_rate: number
+          is_emergency: boolean
           is_mor_staff: boolean
           late_penalty_rate: number
           loan_id: string | null
@@ -193,10 +196,13 @@ export type Database = {
           doc_member_booklet?: boolean
           doc_restraint_letter?: boolean
           doc_vehicle_house_title?: boolean
+          emergency_reason?: string | null
+          emergency_type?: string | null
           end_month?: string | null
           id?: string
           insurance_fee?: number
           interest_rate?: number
+          is_emergency?: boolean
           is_mor_staff?: boolean
           late_penalty_rate?: number
           loan_id?: string | null
@@ -240,10 +246,13 @@ export type Database = {
           doc_member_booklet?: boolean
           doc_restraint_letter?: boolean
           doc_vehicle_house_title?: boolean
+          emergency_reason?: string | null
+          emergency_type?: string | null
           end_month?: string | null
           id?: string
           insurance_fee?: number
           interest_rate?: number
+          is_emergency?: boolean
           is_mor_staff?: boolean
           late_penalty_rate?: number
           loan_id?: string | null

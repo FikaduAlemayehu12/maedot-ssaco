@@ -20,7 +20,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
-  PaymentsModule, DividendsModule, LoanApplicationsModule,
+  PaymentsModule, DividendsModule, LoanApplicationsModule, MemberProfileModule,
 } from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
@@ -33,6 +33,7 @@ type Section =
   | "dashboard"
   | "registrations"
   | "members"
+  | "member-profile"
   | "payments"
   | "savings"
   | "loan-applications"
@@ -206,6 +207,9 @@ const Admin = () => {
           {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","maker","checker"].includes(r))) && (
             <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "members"} label="Members" onClick={() => setSection("members")} />
           )}
+          {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","finance_officer","checker"].includes(r))) && (
+            <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "member-profile"} label="Member Profile (360°)" onClick={() => setSection("member-profile")} />
+          )}
           {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("maker") || roles.includes("checker") || roles.includes("finance_officer")) && (
             <SidebarItem icon={<Receipt className="size-4" />} active={section === "payments"} label="Payments" onClick={() => setSection("payments")} />
           )}
@@ -252,6 +256,7 @@ const Admin = () => {
                   : section === "staff" ? t.admin.staffMgmt
                   : section === "dashboard" ? "Dashboard"
                   : section === "members" ? "Members"
+                  : section === "member-profile" ? "Member Profile (360°)"
                   : section === "payments" ? "Member Payments"
                   : section === "savings" ? "Savings"
                   : section === "loans" ? "Loans"
@@ -264,6 +269,7 @@ const Admin = () => {
                   : section === "staff" ? t.admin.staffMgmtDesc
                   : section === "dashboard" ? "Overview of SACCO performance"
                   : section === "members" ? "Manage member accounts"
+                  : section === "member-profile" ? "Full transaction history · download as PDF or Excel"
                   : section === "payments" ? "Bank transfers · registration fees · monthly contributions"
                   : section === "savings" ? "Savings accounts & transactions"
                   : section === "loans" ? "Loan applications & repayments"
@@ -287,6 +293,7 @@ const Admin = () => {
             ["dashboard","Dashboard"],
             ["registrations", t.admin.tabs.registrations],
             ["members","Members"],
+            ["member-profile","Profile 360"],
             ["payments","Payments"],
             ["savings","Savings"],
             ["loans","Loans"],
@@ -305,6 +312,7 @@ const Admin = () => {
         <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {section === "dashboard" && <DashboardModule />}
           {section === "members" && <MembersModule />}
+          {section === "member-profile" && <MemberProfileModule />}
           {section === "payments" && <PaymentsModule />}
           {section === "savings" && <SavingsModule />}
           {section === "loans" && <LoansModule />}
