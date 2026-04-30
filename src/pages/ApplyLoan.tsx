@@ -16,6 +16,7 @@ import {
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
+import { Chatbot } from "@/components/site/Chatbot";
 
 const fmt = (n: number | null | undefined) =>
   (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -425,6 +426,7 @@ export default function ApplyLoan() {
           </div>
         )}
       </main>
+      <Chatbot />
     </div>
   );
 }
