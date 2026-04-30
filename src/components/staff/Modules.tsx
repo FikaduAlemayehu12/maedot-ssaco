@@ -1409,7 +1409,7 @@ export const LoanApplicationsModule = () => {
                   )}
                   {eligible6mo === false && form.is_emergency && (
                     <Badge variant="outline" className="border-amber-500/40 text-amber-700 gap-1">
-                      <ShieldAlert className="size-3" /> አስቸኳይ ብድር — 6 ወር ብቃት ተዘል\u017c\u0093
+                      <ShieldAlert className="size-3" /> አስቸኳይ ብድር — 6 ወር ብቃት ተዘሏል
                     </Badge>
                   )}
                   {eligible6mo === true && (
