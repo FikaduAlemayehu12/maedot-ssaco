@@ -1662,7 +1662,7 @@ const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLi
           <div className="font-semibold">{app.application_number} · የብድር ማመልከቻ እና የውል ስምምነት</div>
           <Button size="sm" variant="ghost" onClick={onClose} className="no-print">ዝጋ</Button>
         </div>
-        <div className="p-6 space-y-5 text-sm leading-relaxed max-h-[70vh] overflow-y-auto" lang="am">
+        <div className="p-6 space-y-5 text-sm leading-relaxed max-h-[70vh] overflow-y-auto print:max-h-none print:overflow-visible" lang="am">
           <div>
             <h3 className="font-bold text-base mb-2">በማዕዶት የገ/ቁ/ብ//ኃላ/የተ/የመ/የኅ/ሥራ ማህበር የብድር ማመልከቻ ቅፅ</h3>
             <p>
