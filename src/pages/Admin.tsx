@@ -256,6 +256,7 @@ const Admin = () => {
                   : section === "staff" ? t.admin.staffMgmt
                   : section === "dashboard" ? "Dashboard"
                   : section === "members" ? "Members"
+                  : section === "member-profile" ? "Member Profile (360°)"
                   : section === "payments" ? "Member Payments"
                   : section === "savings" ? "Savings"
                   : section === "loans" ? "Loans"
@@ -268,6 +269,7 @@ const Admin = () => {
                   : section === "staff" ? t.admin.staffMgmtDesc
                   : section === "dashboard" ? "Overview of SACCO performance"
                   : section === "members" ? "Manage member accounts"
+                  : section === "member-profile" ? "Full transaction history · download as PDF or Excel"
                   : section === "payments" ? "Bank transfers · registration fees · monthly contributions"
                   : section === "savings" ? "Savings accounts & transactions"
                   : section === "loans" ? "Loan applications & repayments"
