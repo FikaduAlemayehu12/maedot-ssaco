@@ -1402,9 +1402,14 @@ export const LoanApplicationsModule = () => {
               </div>
               {form.member_id && (
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                  {eligible6mo === false && (
+                  {eligible6mo === false && !form.is_emergency && (
                     <Badge variant="outline" className="border-destructive/40 text-destructive gap-1">
                       <ShieldAlert className="size-3" /> 6 ወር አባልነት አልተሟላም
+                    </Badge>
+                  )}
+                  {eligible6mo === false && form.is_emergency && (
+                    <Badge variant="outline" className="border-amber-500/40 text-amber-700 gap-1">
+                      <ShieldAlert className="size-3" /> አስቸኳይ ብድር — 6 ወር ብቃት ተዘል\u017c\u0093
                     </Badge>
                   )}
                   {eligible6mo === true && (
