@@ -20,7 +20,7 @@ import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
-  PaymentsModule, DividendsModule, LoanApplicationsModule,
+  PaymentsModule, DividendsModule, LoanApplicationsModule, MemberProfileModule,
 } from "@/components/staff/Modules";
 
 type Registration = FullRegistration & {
@@ -33,6 +33,7 @@ type Section =
   | "dashboard"
   | "registrations"
   | "members"
+  | "member-profile"
   | "payments"
   | "savings"
   | "loan-applications"
