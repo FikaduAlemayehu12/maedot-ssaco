@@ -16,6 +16,7 @@ import { SignaturePad } from "@/components/registration/SignaturePad";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useLang } from "@/i18n/LanguageContext";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
+import { Chatbot } from "@/components/site/Chatbot";
 
 const personalSchema = z.object({
   full_name: z.string().trim().min(2).max(200),
@@ -324,6 +325,7 @@ const Register = () => {
         </div>
         <p className="text-xs text-muted-foreground text-center mt-6">{t.brand.shortName} · {settings.phone}</p>
       </main>
+      <Chatbot />
     </div>
   );
 };
