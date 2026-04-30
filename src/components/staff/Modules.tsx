@@ -1171,6 +1171,10 @@ const blankForm = {
   purpose: "",
   monthly_income: "",
   is_mor_staff: false,
+  // emergency loan
+  is_emergency: false,
+  emergency_type: "health",
+  emergency_reason: "",
   // documents
   doc_marriage_cert: false,
   doc_fayda_kebele: false,
