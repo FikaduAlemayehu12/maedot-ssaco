@@ -1267,8 +1267,11 @@ export const LoanApplicationsModule = () => {
     if (!form.member_id || !form.requested_amount) {
       return toast({ title: "Member and amount required", variant: "destructive" });
     }
-    if (eligible6mo === false) {
+    if (eligible6mo === false && !form.is_emergency) {
       return toast({ title: "የአባልነት ብቃት የለም", description: "Member must have at least 6 months of verified membership.", variant: "destructive" });
+    }
+    if (form.is_emergency && !form.emergency_reason.trim()) {
+      return toast({ title: "ምክንያት ያስፈልጋል", description: "Please provide a reason for the emergency loan.", variant: "destructive" });
     }
     const P = Number(form.requested_amount);
     if (maxEligible != null && P > maxEligible) {
@@ -1301,6 +1304,9 @@ export const LoanApplicationsModule = () => {
       total_upfront_fees: Number(computed.fees.toFixed(2)),
       net_to_member: Number(computed.net.toFixed(2)),
       late_penalty_rate: 0.30,
+      is_emergency: form.is_emergency,
+      emergency_type: form.is_emergency ? form.emergency_type : null,
+      emergency_reason: form.is_emergency ? form.emergency_reason : null,
       collateral_owner: form.collateral_owner || null,
       collateral_plate_or_title: form.collateral_plate_or_title || null,
       collateral_motor_chassis: form.collateral_motor_chassis || null,
