@@ -7,6 +7,7 @@ import { WhyUs } from "@/components/site/WhyUs";
 import { Testimonials } from "@/components/site/Testimonials";
 import { CTASection } from "@/components/site/CTASection";
 import { Footer } from "@/components/site/Footer";
+import { Chatbot } from "@/components/site/Chatbot";
 
 const Index = () => {
   return (
@@ -22,6 +23,7 @@ const Index = () => {
         <CTASection />
       </main>
       <Footer />
+      <Chatbot />
     </div>
   );
 };
