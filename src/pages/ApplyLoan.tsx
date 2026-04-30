@@ -417,7 +417,7 @@ export default function ApplyLoan() {
               <div className="text-xs text-muted-foreground">
                 ማመልከቻዎ ለማህበሩ ኮሚቴ ይላካል። ውሳኔ በ7 የስራ ቀናት ውስጥ ይመለሳል።
               </div>
-              <Button variant="hero" size="lg" onClick={submit} disabled={busy || eligible6mo === false}>
+              <Button variant="hero" size="lg" onClick={submit} disabled={busy || (eligible6mo === false && !form.is_emergency)}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <FileSignature className="size-4" />}
                 ማመልከቻ አስገባ · Submit Application
               </Button>
