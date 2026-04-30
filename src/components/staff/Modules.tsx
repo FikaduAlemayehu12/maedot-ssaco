@@ -1453,6 +1453,35 @@ export const LoanApplicationsModule = () => {
               </div>
             </section>
 
+            {/* Emergency loan */}
+            <section className="border rounded-lg p-3 bg-amber-50/40 dark:bg-amber-500/5">
+              <div className="flex items-center gap-2 mb-2">
+                <Checkbox id="emg" checked={form.is_emergency} onCheckedChange={v => setForm({ ...form, is_emergency: !!v })} />
+                <Label htmlFor="emg" className="text-sm font-semibold cursor-pointer">
+                  የአስቸኳይ ብድር (ጤና / ማህበራዊ) — Emergency loan (skips 6-month rule)
+                </Label>
+              </div>
+              {form.is_emergency && (
+                <div className="grid sm:grid-cols-3 gap-3 mt-2">
+                  <div>
+                    <Label className="text-xs">ዓይነት · Type</Label>
+                    <Select value={form.emergency_type} onValueChange={v => setForm({ ...form, emergency_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="health">የጤና (Health)</SelectItem>
+                        <SelectItem value="social">ማህበራዊ (Social)</SelectItem>
+                        <SelectItem value="other">ሌላ (Other)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">ምክንያት · Reason *</Label>
+                    <Textarea rows={2} value={form.emergency_reason} onChange={e => setForm({ ...form, emergency_reason: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </section>
+
             {/* Document checklist */}
             <section>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ያቀረቧቸው ሰነዶች</div>
