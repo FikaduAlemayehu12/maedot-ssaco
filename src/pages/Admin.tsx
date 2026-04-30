@@ -309,6 +309,7 @@ const Admin = () => {
         <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {section === "dashboard" && <DashboardModule />}
           {section === "members" && <MembersModule />}
+          {section === "member-profile" && <MemberProfileModule />}
           {section === "payments" && <PaymentsModule />}
           {section === "savings" && <SavingsModule />}
           {section === "loans" && <LoansModule />}
