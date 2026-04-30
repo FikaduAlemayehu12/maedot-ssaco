@@ -40,6 +40,9 @@ export default function ApplyLoan() {
     purpose: "",
     monthly_income: "",
     is_mor_staff: false,
+    is_emergency: false,
+    emergency_type: "health",
+    emergency_reason: "",
     doc_marriage_cert: false,
     doc_fayda_kebele: false,
     doc_member_booklet: false,
@@ -113,8 +116,11 @@ export default function ApplyLoan() {
     if (!form.requested_amount || Number(form.requested_amount) <= 0) {
       return toast({ title: "የብድር መጠን ያስፈልጋል", variant: "destructive" });
     }
-    if (eligible6mo === false) {
+    if (eligible6mo === false && !form.is_emergency) {
       return toast({ title: "የአባልነት ብቃት የለም", description: "ቢያንስ 6 ወር አባልነት ያስፈልጋል.", variant: "destructive" });
+    }
+    if (form.is_emergency && !form.emergency_reason.trim()) {
+      return toast({ title: "ምክንያት ያስፈልጋል", description: "Please provide an emergency reason.", variant: "destructive" });
     }
     const P = Number(form.requested_amount);
     if (maxEligible != null && P > maxEligible) {
@@ -146,6 +152,9 @@ export default function ApplyLoan() {
       total_upfront_fees: Number(computed.fees.toFixed(2)),
       net_to_member: Number(computed.net.toFixed(2)),
       late_penalty_rate: 0.30,
+      is_emergency: form.is_emergency,
+      emergency_type: form.is_emergency ? form.emergency_type : null,
+      emergency_reason: form.is_emergency ? form.emergency_reason : null,
       collateral_owner: form.collateral_owner || null,
       collateral_plate_or_title: form.collateral_plate_or_title || null,
       collateral_motor_chassis: form.collateral_motor_chassis || null,
