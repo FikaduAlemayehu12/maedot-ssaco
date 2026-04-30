@@ -1748,3 +1748,353 @@ const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLi
 const Row = ({ k, v }: { k: string; v: string }) => (
   <div className="flex gap-2"><span className="text-muted-foreground min-w-[180px]">{k}:</span><span className="font-medium">{v}</span></div>
 );
+
+/* ---------------- MEMBER PROFILE (360°) ---------------- */
+
+type MemberFull = {
+  id: string; member_number: string; full_name: string;
+  phone: string | null; email: string | null; region: string | null;
+  address: string | null; date_of_birth: string | null;
+  gender: string | null; employer: string | null; is_mor_staff: boolean;
+  status: string; created_at: string; registration_id: string | null;
+};
+
+export const MemberProfileModule = () => {
+  const [members, setMembers] = useState<MemberFull[]>([]);
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<MemberFull | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("members")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      setMembers((data ?? []) as MemberFull[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = members.filter(m => {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return (
+      m.member_number?.toLowerCase().includes(s) ||
+      m.full_name?.toLowerCase().includes(s) ||
+      m.phone?.toLowerCase().includes(s) ||
+      m.email?.toLowerCase().includes(s)
+    );
+  });
+
+  if (selected) {
+    return <MemberProfileView member={selected} onBack={() => setSelected(null)} />;
+  }
+
+  return (
+    <div className="bg-card rounded-2xl border shadow-card-soft">
+      <div className="p-4 border-b flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <UserCircle2 className="size-4 text-primary" /> Member Profiles ({members.length})
+          </div>
+          <div className="text-xs text-muted-foreground">360° view · all transactions, loans, dividends, payments</div>
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search member name / number / phone..." className="pl-9" />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        {loading ? (
+          <div className="p-12 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-sm">No members found</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-muted-foreground bg-muted/40">
+                <th className="px-4 py-3">Member #</th>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Phone</th>
+                <th className="px-4 py-3">Region</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.map(m => (
+                <tr key={m.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 font-mono text-xs font-semibold text-primary">{m.member_number}</td>
+                  <td className="px-4 py-3">{m.full_name}{m.is_mor_staff && <Badge variant="outline" className="ml-1 text-[10px]">MoR</Badge>}</td>
+                  <td className="px-4 py-3">{m.phone ?? "—"}</td>
+                  <td className="px-4 py-3">{m.region ?? "—"}</td>
+                  <td className="px-4 py-3"><Badge variant="outline">{m.status}</Badge></td>
+                  <td className="px-4 py-3 text-right">
+                    <Button size="sm" variant="outline" onClick={() => setSelected(m)}>
+                      <UserCircle2 className="size-3.5" /> Open
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () => void }) => {
+  const [registration, setRegistration] = useState<any>(null);
+  const [savings, setSavings] = useState<any[]>([]);
+  const [savingsTxns, setSavingsTxns] = useState<any[]>([]);
+  const [accruals, setAccruals] = useState<any[]>([]);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [loanApps, setLoanApps] = useState<any[]>([]);
+  const [repayments, setRepayments] = useState<any[]>([]);
+  const [share, setShare] = useState<any>(null);
+  const [dividends, setDividends] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const reg = member.registration_id
+        ? await supabase.from("registrations").select("*").eq("id", member.registration_id).maybeSingle()
+        : { data: null };
+      const accs = await supabase.from("savings_accounts").select("*").eq("member_id", member.id);
+      const accIds = (accs.data ?? []).map(a => a.id);
+      const [txns, accr, ln, lapps, sh, div, pay] = await Promise.all([
+        accIds.length
+          ? supabase.from("savings_transactions").select("*").in("account_id", accIds).order("posted_at", { ascending: false })
+          : Promise.resolve({ data: [] }),
+        accIds.length
+          ? supabase.from("savings_interest_accruals").select("*").in("account_id", accIds).order("period", { ascending: false })
+          : Promise.resolve({ data: [] }),
+        supabase.from("loans").select("*").eq("member_id", member.id).order("created_at", { ascending: false }),
+        supabase.from("loan_applications").select("*").eq("member_id", member.id).order("created_at", { ascending: false }),
+        supabase.from("share_capital").select("*").eq("member_id", member.id).maybeSingle(),
+        supabase.from("share_dividends").select("*").eq("member_id", member.id).order("fiscal_year", { ascending: false }),
+        supabase.from("member_payments").select("*").eq("member_id", member.id).order("paid_at", { ascending: false }),
+      ]);
+      setRegistration(reg.data);
+      setSavings(accs.data ?? []);
+      const loanIds = ((ln.data as any[]) ?? []).map(l => l.id);
+      const reps = loanIds.length
+        ? await supabase.from("loan_repayments").select("*").in("loan_id", loanIds).order("paid_at", { ascending: false })
+        : { data: [] };
+      setSavingsTxns((txns.data as any[]) ?? []);
+      setAccruals((accr.data as any[]) ?? []);
+      setLoans((ln.data as any[]) ?? []);
+      setLoanApps((lapps.data as any[]) ?? []);
+      setShare(sh.data);
+      setDividends((div.data as any[]) ?? []);
+      setPayments((pay.data as any[]) ?? []);
+      setRepayments((reps.data as any[]) ?? []);
+      setLoading(false);
+    })();
+  }, [member.id]);
+
+  const totalSavings = savings.reduce((a, s) => a + Number(s.balance || 0), 0);
+  const totalOutstanding = loans.reduce((a, l) => a + Number(l.outstanding_balance || 0), 0);
+  const totalDividends = dividends.reduce((a, d) => a + Number(d.amount || 0), 0);
+  const totalPayments = payments.reduce((a, p) => a + Number(p.amount || 0), 0);
+
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
+      Member_Number: member.member_number, Full_Name: member.full_name,
+      Phone: member.phone, Email: member.email, Region: member.region,
+      Address: member.address, DOB: member.date_of_birth, Gender: member.gender,
+      Employer: member.employer, MoR_Staff: member.is_mor_staff, Status: member.status,
+      Joined: member.created_at,
+      Total_Savings_ETB: totalSavings, Loan_Outstanding_ETB: totalOutstanding,
+      Total_Dividends_ETB: totalDividends, Total_Payments_ETB: totalPayments,
+    }]), "Profile");
+    if (savings.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(savings), "Savings Accounts");
+    if (savingsTxns.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(savingsTxns), "Savings Transactions");
+    if (accruals.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(accruals), "Interest Accruals");
+    if (loans.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loans), "Loans");
+    if (loanApps.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanApps), "Loan Applications");
+    if (repayments.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repayments), "Repayments");
+    if (dividends.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dividends), "Dividends");
+    if (payments.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(payments), "Member Payments");
+    XLSX.writeFile(wb, `${member.member_number}_${member.full_name.replace(/\s+/g, "_")}.xlsx`);
+  };
+
+  if (loading) {
+    return <div className="p-12 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #member-profile-print, #member-profile-print * { visibility: visible !important; }
+          #member-profile-print { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 no-print">
+        <Button size="sm" variant="outline" onClick={onBack}>← Back to members</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Print / PDF
+          </Button>
+          <Button size="sm" variant="hero" onClick={exportExcel}>
+            <Download className="size-4" /> Export Excel
+          </Button>
+        </div>
+      </div>
+
+      <div id="member-profile-print" className="space-y-4">
+        {/* Header */}
+        <div className="bg-card border rounded-2xl p-5 shadow-card-soft">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Member Number</div>
+              <div className="font-mono text-lg font-bold text-primary">{member.member_number}</div>
+              <h2 className="text-2xl font-display font-bold mt-1">{member.full_name}</h2>
+              <div className="text-sm text-muted-foreground">
+                {member.phone ?? "—"} · {member.email ?? "—"} · {member.region ?? "—"}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">{member.status}</Badge>
+              {member.is_mor_staff && <Badge variant="outline">MoR Staff</Badge>}
+              {member.employer && <Badge variant="outline">{member.employer}</Badge>}
+            </div>
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <ModuleStat label="Total Savings (ETB)" value={fmt(totalSavings)} icon={<Wallet className="size-5" />} tone="success" />
+          <ModuleStat label="Loan Outstanding (ETB)" value={fmt(totalOutstanding)} icon={<HandCoins className="size-5" />} tone="destructive" />
+          <ModuleStat label="Share Capital (ETB)" value={fmt(Number(share?.balance ?? 0))} icon={<CircleDollarSign className="size-5" />} tone="primary" />
+          <ModuleStat label="Total Dividends (ETB)" value={fmt(totalDividends)} icon={<Percent className="size-5" />} tone="dark" />
+        </div>
+
+        {/* Personal */}
+        {registration && (
+          <Section title="Registration & Personal Info">
+            <KV k="Customer #" v={registration.customer_number} />
+            <KV k="Account #" v={registration.account_number} />
+            <KV k="Account Type" v={registration.account_type} />
+            <KV k="DOB" v={registration.date_of_birth} />
+            <KV k="Gender" v={registration.gender} />
+            <KV k="Nationality" v={registration.nationality} />
+            <KV k="ID" v={`${registration.id_type ?? "—"} · ${registration.id_number ?? "—"}`} />
+            <KV k="Occupation" v={registration.occupation} />
+            <KV k="Branch" v={registration.branch} />
+            <KV k="Heir" v={`${registration.heir_full_name ?? "—"} (${registration.heir_relationship ?? "—"})`} />
+          </Section>
+        )}
+
+        {/* Savings accounts */}
+        <Section title={`Savings Accounts (${savings.length})`}>
+          {savings.length === 0 ? <Empty /> : (
+            <Tbl head={["Account #", "Product", "Balance", "Rate", "Status", "Opened"]}
+                 rows={savings.map(s => [s.account_number, s.product, fmt(s.balance), `${(s.interest_rate * 100).toFixed(2)}%`, s.status, new Date(s.opened_at).toLocaleDateString()])} />
+          )}
+        </Section>
+
+        {/* Savings transactions */}
+        <Section title={`Savings Transactions (${savingsTxns.length})`}>
+          {savingsTxns.length === 0 ? <Empty /> : (
+            <Tbl head={["Date", "Type", "Amount", "Balance", "Note"]}
+                 rows={savingsTxns.slice(0, 200).map(t => [new Date(t.posted_at).toLocaleDateString(), t.txn_type, fmt(t.amount), fmt(t.running_balance), t.note ?? "—"])} />
+          )}
+        </Section>
+
+        {/* Interest accruals */}
+        <Section title={`Interest Accruals (${accruals.length})`}>
+          {accruals.length === 0 ? <Empty /> : (
+            <Tbl head={["Period", "Opening", "Gross", "Tax", "Net", "Closing"]}
+                 rows={accruals.slice(0, 36).map(a => [a.period, fmt(a.opening_balance), fmt(a.gross_interest), fmt(a.tax), fmt(a.net_interest), fmt(a.closing_balance)])} />
+          )}
+        </Section>
+
+        {/* Loan applications */}
+        <Section title={`Loan Applications (${loanApps.length})`}>
+          {loanApps.length === 0 ? <Empty /> : (
+            <Tbl head={["App #", "Date", "Amount", "Term", "Rate", "Status", "Emergency"]}
+                 rows={loanApps.map(a => [a.application_number, new Date(a.created_at).toLocaleDateString(), fmt(a.requested_amount), `${a.term_months}mo`, `${(a.interest_rate * 100).toFixed(0)}%`, a.status, a.is_emergency ? `Yes (${a.emergency_type ?? "—"})` : "No"])} />
+          )}
+        </Section>
+
+        {/* Loans */}
+        <Section title={`Loans (${loans.length})`}>
+          {loans.length === 0 ? <Empty /> : (
+            <Tbl head={["Loan #", "Principal", "Term", "Rate", "Outstanding", "Status", "Disbursed"]}
+                 rows={loans.map(l => [l.loan_number, fmt(l.principal), `${l.term_months}mo`, `${(l.interest_rate * 100).toFixed(0)}%`, fmt(l.outstanding_balance), l.status, l.disbursed_at ? new Date(l.disbursed_at).toLocaleDateString() : "—"])} />
+          )}
+        </Section>
+
+        {/* Repayments */}
+        <Section title={`Loan Repayments (${repayments.length})`}>
+          {repayments.length === 0 ? <Empty /> : (
+            <Tbl head={["Date", "Amount", "Principal", "Interest", "Status", "Reference"]}
+                 rows={repayments.slice(0, 200).map(r => [r.paid_at ? new Date(r.paid_at).toLocaleDateString() : (r.due_date ?? "—"), fmt(r.amount), fmt(r.principal_portion), fmt(r.interest_portion), r.status, r.reference ?? "—"])} />
+          )}
+        </Section>
+
+        {/* Dividends */}
+        <Section title={`Dividends (${dividends.length})`}>
+          {dividends.length === 0 ? <Empty /> : (
+            <Tbl head={["Year", "Share Balance", "Rate", "Amount", "Posted"]}
+                 rows={dividends.map(d => [d.fiscal_year, fmt(d.share_balance), `${(d.rate * 100).toFixed(2)}%`, fmt(d.amount), new Date(d.posted_at).toLocaleDateString()])} />
+          )}
+        </Section>
+
+        {/* Payments */}
+        <Section title={`Member Payments (${payments.length})`}>
+          {payments.length === 0 ? <Empty /> : (
+            <Tbl head={["Date", "Purpose", "Amount", "Bank", "Reference", "Verified"]}
+                 rows={payments.map(p => [p.paid_at, p.purpose, fmt(p.amount), p.bank_name ?? "—", p.bank_reference ?? "—", p.verified ? "✓" : "—"])} />
+          )}
+        </Section>
+      </div>
+    </div>
+  );
+};
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="bg-card border rounded-2xl p-4 shadow-card-soft">
+    <div className="text-sm font-semibold mb-3">{title}</div>
+    <div className="text-sm">{children}</div>
+  </div>
+);
+
+const Empty = () => <div className="text-xs text-muted-foreground py-2">No records</div>;
+
+const KV = ({ k, v }: { k: string; v: any }) => (
+  <div className="flex gap-2 text-sm py-0.5">
+    <span className="text-muted-foreground min-w-[160px]">{k}:</span>
+    <span className="font-medium">{v ?? "—"}</span>
+  </div>
+);
+
+const Tbl = ({ head, rows }: { head: string[]; rows: (string | number)[][] }) => (
+  <div className="overflow-x-auto">
+    <table className="w-full text-xs">
+      <thead>
+        <tr className="text-left uppercase text-muted-foreground bg-muted/40">
+          {head.map(h => <th key={h} className="px-2 py-2 font-semibold">{h}</th>)}
+        </tr>
+      </thead>
+      <tbody className="divide-y">
+        {rows.map((r, i) => (
+          <tr key={i} className="hover:bg-muted/30">
+            {r.map((c, j) => <td key={j} className="px-2 py-1.5 font-mono">{c as any}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
