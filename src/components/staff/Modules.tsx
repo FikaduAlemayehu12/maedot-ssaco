@@ -15,7 +15,9 @@ import {
   TrendingUp, TrendingDown, CircleDollarSign,
   Upload, ShieldCheck, Calculator, FileText, Receipt, Calendar, Percent,
   FileSignature, ShieldAlert, CheckCircle2, XCircle,
+  UserCircle2, Download, Printer,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 /* ---------------- Shared UI ---------------- */
 
