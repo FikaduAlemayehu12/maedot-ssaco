@@ -207,6 +207,9 @@ const Admin = () => {
           {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","maker","checker"].includes(r))) && (
             <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "members"} label="Members" onClick={() => setSection("members")} />
           )}
+          {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","finance_officer","checker"].includes(r))) && (
+            <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "member-profile"} label="Member Profile (360°)" onClick={() => setSection("member-profile")} />
+          )}
           {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("maker") || roles.includes("checker") || roles.includes("finance_officer")) && (
             <SidebarItem icon={<Receipt className="size-4" />} active={section === "payments"} label="Payments" onClick={() => setSection("payments")} />
           )}
