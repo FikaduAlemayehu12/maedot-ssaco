@@ -267,9 +267,14 @@ export default function ApplyLoan() {
                 <div className="text-xs text-muted-foreground">Member #{memberNumber}{member.is_mor_staff ? " · MoR staff" : ""}</div>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                {eligible6mo === false && (
+                {eligible6mo === false && !form.is_emergency && (
                   <Badge variant="outline" className="border-destructive/40 text-destructive gap-1">
                     <ShieldAlert className="size-3" /> 6 ወር አባልነት አልተሟላም
+                  </Badge>
+                )}
+                {eligible6mo === false && form.is_emergency && (
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-700 gap-1">
+                    <ShieldAlert className="size-3" /> አስቸኳይ ብድር — 6 ወር ብቃት ተዘሏል
                   </Badge>
                 )}
                 {eligible6mo === true && (
