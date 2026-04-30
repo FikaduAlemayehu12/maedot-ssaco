@@ -293,6 +293,7 @@ const Admin = () => {
             ["dashboard","Dashboard"],
             ["registrations", t.admin.tabs.registrations],
             ["members","Members"],
+            ["member-profile","Profile 360"],
             ["payments","Payments"],
             ["savings","Savings"],
             ["loans","Loans"],
