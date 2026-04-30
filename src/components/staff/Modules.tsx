@@ -1648,11 +1648,19 @@ const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLi
   const endYear = end ? end.getFullYear() : "____";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-card max-w-3xl w-full rounded-2xl border shadow-xl my-8" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/50 grid place-items-center p-4 overflow-y-auto print:static print:bg-transparent print:p-0" onClick={onClose}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #contract-print, #contract-print * { visibility: visible !important; }
+          #contract-print { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; box-shadow: none !important; border: 0 !important; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+      <div id="contract-print" className="bg-card max-w-3xl w-full rounded-2xl border shadow-xl my-8" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b flex items-center justify-between">
           <div className="font-semibold">{app.application_number} · የብድር ማመልከቻ እና የውል ስምምነት</div>
-          <Button size="sm" variant="ghost" onClick={onClose}>ዝጋ</Button>
+          <Button size="sm" variant="ghost" onClick={onClose} className="no-print">ዝጋ</Button>
         </div>
         <div className="p-6 space-y-5 text-sm leading-relaxed max-h-[70vh] overflow-y-auto" lang="am">
           <div>
@@ -1726,8 +1734,8 @@ const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLi
             </div>
           </div>
         </div>
-        <div className="p-4 border-t flex justify-end gap-2">
-          <Button size="sm" variant="outline" onClick={() => window.print()}>አትም / Print</Button>
+        <div className="p-4 border-t flex justify-end gap-2 no-print">
+          <Button size="sm" variant="outline" onClick={() => window.print()}>አትም / Save as PDF</Button>
           <Button size="sm" variant="hero" onClick={onClose}>ዝጋ</Button>
         </div>
       </div>
