@@ -320,6 +320,33 @@ export default function ApplyLoan() {
               </div>
             </section>
 
+            {/* Emergency loan */}
+            <section className="bg-card border rounded-2xl p-5 shadow-card-soft">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox checked={form.is_emergency} onCheckedChange={v => setForm({ ...form, is_emergency: !!v })} />
+                <span className="text-sm font-semibold">የአስቸኳይ ብድር (ጤና / ማህበራዊ) — Emergency loan (skips 6-month rule)</span>
+              </label>
+              {form.is_emergency && (
+                <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <Label className="text-xs">ዓይነት · Type</Label>
+                    <Select value={form.emergency_type} onValueChange={v => setForm({ ...form, emergency_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="health">የጤና (Health)</SelectItem>
+                        <SelectItem value="social">ማህበራዊ (Social)</SelectItem>
+                        <SelectItem value="other">ሌላ (Other)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">ምክንያት · Reason *</Label>
+                    <Textarea rows={2} value={form.emergency_reason} onChange={e => setForm({ ...form, emergency_reason: e.target.value })} />
+                  </div>
+                </div>
+              )}
+            </section>
+
             {/* Computed */}
             <section className="bg-card border rounded-2xl p-5 shadow-card-soft">
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
