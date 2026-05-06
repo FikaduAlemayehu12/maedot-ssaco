@@ -370,26 +370,23 @@ export default function ApplyLoan() {
 
             {/* Documents */}
             <section className="bg-card border rounded-2xl p-5 shadow-card-soft">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">የተጠቃሚ ሰነዶች · Documents Checklist</div>
-              <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                {[
-                  ["doc_marriage_cert", "የጋብቻ ሰርተፊኬት"],
-                  ["doc_fayda_kebele", "ፋይዳ / የቀበሌ መታወቂያ"],
-                  ["doc_member_booklet", "የአባል ደብተር"],
-                  ["doc_vehicle_house_title", "የተሽከርካሪ/የቤት ደብተር"],
-                  ["doc_insurance", "ኢንሹራንስ"],
-                  ["doc_restraint_letter", "የእገዳ ደብዳቤ"],
-                  ["doc_cheque", "ቼክ"],
-                ].map(([k, label]) => (
-                  <label key={k} className="flex items-center gap-2 px-3 py-2 rounded-md border bg-muted/20 cursor-pointer">
-                    <Checkbox
-                      checked={(form as any)[k]}
-                      onCheckedChange={v => setForm({ ...form, [k]: !!v } as any)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">ያቀረቧቸው ሰነዶች · Documents (Upload)</div>
+              <div className="text-xs text-muted-foreground mb-3">እባክዎ ለእያንዳንዱ ሰነድ ፋይል ያስቀምጡ (PDF ወይም ምስል)</div>
+              <LoanDocUpload
+                checked={form as any}
+                urls={docUrls}
+                memberRef={member?.member_id}
+                onCheckedChange={(k: LoanDocKey, v) => setForm({ ...form, [k]: v } as any)}
+                onUrlChange={(k: LoanDocKey, u) => {
+                  setDocUrls(prev => {
+                    const next = { ...prev };
+                    if (u) next[k] = u;
+                    else delete next[k];
+                    return next;
+                  });
+                  if (!u) setForm(prev => ({ ...prev, [k]: false }) as any);
+                }}
+              />
             </section>
 
             {/* Collateral */}
