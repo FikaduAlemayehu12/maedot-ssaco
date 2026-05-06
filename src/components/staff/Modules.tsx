@@ -1494,26 +1494,22 @@ export const LoanApplicationsModule = () => {
 
             {/* Document checklist */}
             <section>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ያቀረቧቸው ሰነዶች</div>
-              <div className="grid sm:grid-cols-3 gap-2 text-sm">
-                {[
-                  ["doc_marriage_cert", "የጋብቻ ሰርተፍኬት"],
-                  ["doc_fayda_kebele", "የፋይዳ / የቀበሌ መታወቂያ"],
-                  ["doc_member_booklet", "የአባል ደብተር"],
-                  ["doc_vehicle_house_title", "የመኪና ሊብሬ / የቤት ካርታ"],
-                  ["doc_insurance", "ኢንሹራንስ"],
-                  ["doc_restraint_letter", "የእግድ ደብዳቤ"],
-                  ["doc_cheque", "ቼክ"],
-                ].map(([k, label]) => (
-                  <label key={k} className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card cursor-pointer">
-                    <Checkbox
-                      checked={(form as any)[k]}
-                      onCheckedChange={v => setForm({ ...form, [k]: !!v } as any)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ያቀረቧቸው ሰነዶች · Documents (Upload)</div>
+              <LoanDocUpload
+                checked={form as any}
+                urls={docUrls}
+                memberRef={form.member_id}
+                onCheckedChange={(k: LoanDocKey, v) => setForm({ ...form, [k]: v } as any)}
+                onUrlChange={(k: LoanDocKey, u) => {
+                  setDocUrls(prev => {
+                    const next = { ...prev };
+                    if (u) next[k] = u;
+                    else delete next[k];
+                    return next;
+                  });
+                  if (!u) setForm(prev => ({ ...prev, [k]: false }) as any);
+                }}
+              />
             </section>
 
             {/* Collateral */}
