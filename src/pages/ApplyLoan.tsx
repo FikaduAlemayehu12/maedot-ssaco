@@ -17,6 +17,7 @@ import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { LanguageToggle } from "@/components/site/LanguageToggle";
 import { Chatbot } from "@/components/site/Chatbot";
+import { LoanDocUpload, LOAN_DOC_LIST, type LoanDocKey } from "@/components/loan/LoanDocUpload";
 
 const fmt = (n: number | null | undefined) =>
   (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -62,6 +63,7 @@ export default function ApplyLoan() {
     witness_3: "",
     start_month: new Date().toISOString().slice(0, 7) + "-01",
   });
+  const [docUrls, setDocUrls] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ application_number?: string } | null>(null);
 
@@ -145,6 +147,7 @@ export default function ApplyLoan() {
       doc_insurance: form.doc_insurance,
       doc_restraint_letter: form.doc_restraint_letter,
       doc_cheque: form.doc_cheque,
+      loan_documents: docUrls,
       interest_rate: interestRate,
       monthly_installment: Number(computed.monthly.toFixed(2)),
       total_payable: Number(computed.total.toFixed(2)),
