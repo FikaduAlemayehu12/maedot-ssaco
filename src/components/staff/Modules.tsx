@@ -18,6 +18,7 @@ import {
   UserCircle2, Download, Printer,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { LoanDocUpload, type LoanDocKey } from "@/components/loan/LoanDocUpload";
 
 /* ---------------- Shared UI ---------------- */
 
@@ -1211,6 +1212,7 @@ export const LoanApplicationsModule = () => {
   const [eligible6mo, setEligible6mo] = useState<boolean | null>(null);
   const [maxEligible, setMaxEligible] = useState<number | null>(null);
   const [viewing, setViewing] = useState<LoanApp | null>(null);
+  const [docUrls, setDocUrls] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
@@ -1297,6 +1299,7 @@ export const LoanApplicationsModule = () => {
       doc_insurance: form.doc_insurance,
       doc_restraint_letter: form.doc_restraint_letter,
       doc_cheque: form.doc_cheque,
+      loan_documents: docUrls,
       interest_rate: interestRate,
       monthly_installment: Number(computed.monthly.toFixed(2)),
       total_payable: Number(computed.total.toFixed(2)),
