@@ -155,6 +155,7 @@ export type Database = {
           is_emergency: boolean
           is_mor_staff: boolean
           late_penalty_rate: number
+          loan_documents: Json
           loan_id: string | null
           manager_name: string | null
           mandatory_savings: number
@@ -205,6 +206,7 @@ export type Database = {
           is_emergency?: boolean
           is_mor_staff?: boolean
           late_penalty_rate?: number
+          loan_documents?: Json
           loan_id?: string | null
           manager_name?: string | null
           mandatory_savings?: number
@@ -255,6 +257,7 @@ export type Database = {
           is_emergency?: boolean
           is_mor_staff?: boolean
           late_penalty_rate?: number
+          loan_documents?: Json
           loan_id?: string | null
           manager_name?: string | null
           mandatory_savings?: number

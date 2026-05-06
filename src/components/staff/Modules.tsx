@@ -18,6 +18,7 @@ import {
   UserCircle2, Download, Printer,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { LoanDocUpload, type LoanDocKey } from "@/components/loan/LoanDocUpload";
 
 /* ---------------- Shared UI ---------------- */
 
@@ -1211,6 +1212,7 @@ export const LoanApplicationsModule = () => {
   const [eligible6mo, setEligible6mo] = useState<boolean | null>(null);
   const [maxEligible, setMaxEligible] = useState<number | null>(null);
   const [viewing, setViewing] = useState<LoanApp | null>(null);
+  const [docUrls, setDocUrls] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
@@ -1297,6 +1299,7 @@ export const LoanApplicationsModule = () => {
       doc_insurance: form.doc_insurance,
       doc_restraint_letter: form.doc_restraint_letter,
       doc_cheque: form.doc_cheque,
+      loan_documents: docUrls,
       interest_rate: interestRate,
       monthly_installment: Number(computed.monthly.toFixed(2)),
       total_payable: Number(computed.total.toFixed(2)),
@@ -1491,26 +1494,22 @@ export const LoanApplicationsModule = () => {
 
             {/* Document checklist */}
             <section>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ያቀረቧቸው ሰነዶች</div>
-              <div className="grid sm:grid-cols-3 gap-2 text-sm">
-                {[
-                  ["doc_marriage_cert", "የጋብቻ ሰርተፍኬት"],
-                  ["doc_fayda_kebele", "የፋይዳ / የቀበሌ መታወቂያ"],
-                  ["doc_member_booklet", "የአባል ደብተር"],
-                  ["doc_vehicle_house_title", "የመኪና ሊብሬ / የቤት ካርታ"],
-                  ["doc_insurance", "ኢንሹራንስ"],
-                  ["doc_restraint_letter", "የእግድ ደብዳቤ"],
-                  ["doc_cheque", "ቼክ"],
-                ].map(([k, label]) => (
-                  <label key={k} className="flex items-center gap-2 px-3 py-2 rounded-md border bg-card cursor-pointer">
-                    <Checkbox
-                      checked={(form as any)[k]}
-                      onCheckedChange={v => setForm({ ...form, [k]: !!v } as any)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">ያቀረቧቸው ሰነዶች · Documents (Upload)</div>
+              <LoanDocUpload
+                checked={form as any}
+                urls={docUrls}
+                memberRef={form.member_id}
+                onCheckedChange={(k: LoanDocKey, v) => setForm({ ...form, [k]: v } as any)}
+                onUrlChange={(k: LoanDocKey, u) => {
+                  setDocUrls(prev => {
+                    const next = { ...prev };
+                    if (u) next[k] = u;
+                    else delete next[k];
+                    return next;
+                  });
+                  if (!u) setForm(prev => ({ ...prev, [k]: false }) as any);
+                }}
+              />
             </section>
 
             {/* Collateral */}
@@ -1724,6 +1723,18 @@ const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLi
 
           <div className="border-t pt-3 space-y-1">
             <h4 className="font-semibold">የስምምነት ማረጋገጫ</h4>
+            {(app as any).loan_documents && Object.keys((app as any).loan_documents).length > 0 && (
+              <div className="mb-3 no-print-only">
+                <div className="text-sm font-semibold mb-1">የተያያዙ ሰነዶች · Attached documents:</div>
+                <ul className="list-disc ml-5 text-[13px]">
+                  {Object.entries((app as any).loan_documents as Record<string, string>).map(([k, url]) => (
+                    <li key={k}>
+                      {k.replace(/^doc_/, "").replace(/_/g, " ")}: <a href={url} target="_blank" rel="noreferrer" className="text-primary underline">view</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <p>ተበዳሪ: እኔ <b>{name}</b> የብድር ውሉን ጠቅላላ ይዘት አንብቤ መብትና ግዴታዬን ከተረዳሁ በኋላ በፈቃደኝነት ፈርሜያለሁ፡፡</p>
             <p>ፊርማ: _________________ ቀን: _________________</p>
             <p className="mt-2">አበዳሪ: እኔ <b>{app.manager_name ?? "[የሥራ አስኪያጅ ስም]"}</b> የማህበሩ ስራ አስኪያጅ አበዳሪን በመወከል የውሉን ይዘት አስረድቼ ማስፈረሜን አረጋግጣለሁ፡፡</p>
@@ -1857,6 +1868,7 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
   const [share, setShare] = useState<any>(null);
   const [dividends, setDividends] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [guarantorOf, setGuarantorOf] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1886,6 +1898,11 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
       const reps = loanIds.length
         ? await supabase.from("loan_repayments").select("*").in("loan_id", loanIds).order("paid_at", { ascending: false })
         : { data: [] };
+      // Loans where this member is named as a guarantor
+      const [appG, loanG] = await Promise.all([
+        supabase.from("loan_application_guarantors").select("*, loan_applications(application_number, member_id, requested_amount, status, created_at, members:member_id(member_number, full_name))").eq("guarantor_member_id", member.id),
+        supabase.from("loan_guarantors").select("*, loans(loan_number, member_id, principal, status, created_at, members:member_id(member_number, full_name))").eq("guarantor_member_id", member.id),
+      ]);
       setSavingsTxns((txns.data as any[]) ?? []);
       setAccruals((accr.data as any[]) ?? []);
       setLoans((ln.data as any[]) ?? []);
@@ -1894,6 +1911,25 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
       setDividends((div.data as any[]) ?? []);
       setPayments((pay.data as any[]) ?? []);
       setRepayments((reps.data as any[]) ?? []);
+      const combined = [
+        ...((appG.data ?? []) as any[]).map(g => ({
+          kind: "Application",
+          ref: g.loan_applications?.application_number ?? "—",
+          borrower: g.loan_applications?.members ? `${g.loan_applications.members.member_number} · ${g.loan_applications.members.full_name}` : "—",
+          amount: g.loan_applications?.requested_amount ?? 0,
+          status: g.loan_applications?.status ?? "—",
+          date: g.loan_applications?.created_at ?? g.created_at,
+        })),
+        ...((loanG.data ?? []) as any[]).map(g => ({
+          kind: "Loan",
+          ref: g.loans?.loan_number ?? "—",
+          borrower: g.loans?.members ? `${g.loans.members.member_number} · ${g.loans.members.full_name}` : "—",
+          amount: g.loans?.principal ?? 0,
+          status: g.loans?.status ?? "—",
+          date: g.loans?.created_at ?? g.created_at,
+        })),
+      ];
+      setGuarantorOf(combined);
       setLoading(false);
     })();
   }, [member.id]);
@@ -2041,6 +2077,14 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
           {repayments.length === 0 ? <Empty /> : (
             <Tbl head={["Date", "Amount", "Principal", "Interest", "Status", "Reference"]}
                  rows={repayments.slice(0, 200).map(r => [r.paid_at ? new Date(r.paid_at).toLocaleDateString() : (r.due_date ?? "—"), fmt(r.amount), fmt(r.principal_portion), fmt(r.interest_portion), r.status, r.reference ?? "—"])} />
+          )}
+        </Section>
+
+        {/* Guarantor history */}
+        <Section title={`Guarantor For (${guarantorOf.length})`}>
+          {guarantorOf.length === 0 ? <Empty /> : (
+            <Tbl head={["Kind", "Reference", "Borrower", "Amount", "Status", "Date"]}
+                 rows={guarantorOf.map(g => [g.kind, g.ref, g.borrower, fmt(g.amount), g.status, g.date ? new Date(g.date).toLocaleDateString() : "—"])} />
           )}
         </Section>
 
