@@ -1856,6 +1856,7 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
   const [share, setShare] = useState<any>(null);
   const [dividends, setDividends] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [guarantorOf, setGuarantorOf] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1885,6 +1886,11 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
       const reps = loanIds.length
         ? await supabase.from("loan_repayments").select("*").in("loan_id", loanIds).order("paid_at", { ascending: false })
         : { data: [] };
+      // Loans where this member is named as a guarantor
+      const [appG, loanG] = await Promise.all([
+        supabase.from("loan_application_guarantors").select("*, loan_applications(application_number, member_id, requested_amount, status, created_at, members:member_id(member_number, full_name))").eq("guarantor_member_id", member.id),
+        supabase.from("loan_guarantors").select("*, loans(loan_number, member_id, principal, status, created_at, members:member_id(member_number, full_name))").eq("guarantor_member_id", member.id),
+      ]);
       setSavingsTxns((txns.data as any[]) ?? []);
       setAccruals((accr.data as any[]) ?? []);
       setLoans((ln.data as any[]) ?? []);
@@ -1893,6 +1899,25 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
       setDividends((div.data as any[]) ?? []);
       setPayments((pay.data as any[]) ?? []);
       setRepayments((reps.data as any[]) ?? []);
+      const combined = [
+        ...((appG.data ?? []) as any[]).map(g => ({
+          kind: "Application",
+          ref: g.loan_applications?.application_number ?? "—",
+          borrower: g.loan_applications?.members ? `${g.loan_applications.members.member_number} · ${g.loan_applications.members.full_name}` : "—",
+          amount: g.loan_applications?.requested_amount ?? 0,
+          status: g.loan_applications?.status ?? "—",
+          date: g.loan_applications?.created_at ?? g.created_at,
+        })),
+        ...((loanG.data ?? []) as any[]).map(g => ({
+          kind: "Loan",
+          ref: g.loans?.loan_number ?? "—",
+          borrower: g.loans?.members ? `${g.loans.members.member_number} · ${g.loans.members.full_name}` : "—",
+          amount: g.loans?.principal ?? 0,
+          status: g.loans?.status ?? "—",
+          date: g.loans?.created_at ?? g.created_at,
+        })),
+      ];
+      setGuarantorOf(combined);
       setLoading(false);
     })();
   }, [member.id]);
