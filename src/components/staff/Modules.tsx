@@ -1723,6 +1723,18 @@ const ContractView = ({ app, member, onClose }: { app: LoanApp; member: MemberLi
 
           <div className="border-t pt-3 space-y-1">
             <h4 className="font-semibold">የስምምነት ማረጋገጫ</h4>
+            {(app as any).loan_documents && Object.keys((app as any).loan_documents).length > 0 && (
+              <div className="mb-3 no-print-only">
+                <div className="text-sm font-semibold mb-1">የተያያዙ ሰነዶች · Attached documents:</div>
+                <ul className="list-disc ml-5 text-[13px]">
+                  {Object.entries((app as any).loan_documents as Record<string, string>).map(([k, url]) => (
+                    <li key={k}>
+                      {k.replace(/^doc_/, "").replace(/_/g, " ")}: <a href={url} target="_blank" rel="noreferrer" className="text-primary underline">view</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <p>ተበዳሪ: እኔ <b>{name}</b> የብድር ውሉን ጠቅላላ ይዘት አንብቤ መብትና ግዴታዬን ከተረዳሁ በኋላ በፈቃደኝነት ፈርሜያለሁ፡፡</p>
             <p>ፊርማ: _________________ ቀን: _________________</p>
             <p className="mt-2">አበዳሪ: እኔ <b>{app.manager_name ?? "[የሥራ አስኪያጅ ስም]"}</b> የማህበሩ ስራ አስኪያጅ አበዳሪን በመወከል የውሉን ይዘት አስረድቼ ማስፈረሜን አረጋግጣለሁ፡፡</p>
