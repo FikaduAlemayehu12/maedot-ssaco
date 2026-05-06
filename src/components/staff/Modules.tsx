@@ -2068,6 +2068,14 @@ const MemberProfileView = ({ member, onBack }: { member: MemberFull; onBack: () 
           )}
         </Section>
 
+        {/* Guarantor history */}
+        <Section title={`Guarantor For (${guarantorOf.length})`}>
+          {guarantorOf.length === 0 ? <Empty /> : (
+            <Tbl head={["Kind", "Reference", "Borrower", "Amount", "Status", "Date"]}
+                 rows={guarantorOf.map(g => [g.kind, g.ref, g.borrower, fmt(g.amount), g.status, g.date ? new Date(g.date).toLocaleDateString() : "—"])} />
+          )}
+        </Section>
+
         {/* Dividends */}
         <Section title={`Dividends (${dividends.length})`}>
           {dividends.length === 0 ? <Empty /> : (
