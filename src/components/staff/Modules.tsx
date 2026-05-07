@@ -1444,10 +1444,10 @@ export const LoanApplicationsModule = () => {
                   <Select value={form.term_months} onValueChange={v => setForm({ ...form, term_months: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="12">12 ወር (1 ዓመት)</SelectItem>
-                      <SelectItem value="24">24 ወር (2 ዓመት)</SelectItem>
-                      <SelectItem value="36">36 ወር (3 ዓመት · 15%)</SelectItem>
-                      <SelectItem value="48">48 ወር (4 ዓመት · 16%)</SelectItem>
+                      <SelectItem value="12">12 ወር (1 ዓመት · 15%)</SelectItem>
+                      <SelectItem value="24">24 ወር (2 ዓመት · 16%)</SelectItem>
+                      <SelectItem value="36">36 ወር (3 ዓመት · 16%)</SelectItem>
+                      <SelectItem value="48">48 ወር (4 ዓመት · 17%)</SelectItem>
                       <SelectItem value="60">60 ወር (5 ዓመት · 17%)</SelectItem>
                     </SelectContent>
                   </Select>
