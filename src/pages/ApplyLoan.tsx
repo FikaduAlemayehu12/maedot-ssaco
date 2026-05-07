@@ -96,8 +96,8 @@ export default function ApplyLoan() {
   const interestRate = useMemo(() => {
     if (form.is_mor_staff) return 0.15;
     const t = Number(form.term_months);
-    if (t <= 36) return 0.15;
-    if (t <= 48) return 0.16;
+    if (t <= 12) return 0.15;
+    if (t <= 36) return 0.16;
     return 0.17;
   }, [form.term_months, form.is_mor_staff]);
 

@@ -11,7 +11,7 @@ import {
   Check, X, LogOut, Search, Users, Clock, CheckCircle2, XCircle, Loader2,
   ShieldCheck, Download, Eye, Trash2, UserPlus, ArrowLeft, Copy,
   LayoutDashboard, UserCircle2, Wallet, HandCoins, BookOpen, Receipt, PieChart,
-  FileSignature,
+  FileSignature, BarChart3,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -22,6 +22,7 @@ import {
   DashboardModule, MembersModule, SavingsModule, LoansModule, FinanceModule,
   PaymentsModule, DividendsModule, LoanApplicationsModule, MemberProfileModule,
 } from "@/components/staff/Modules";
+import { AnalyticsDashboard } from "@/components/staff/AnalyticsDashboard";
 
 type Registration = FullRegistration & {
   status: "pending" | "approved" | "rejected";
@@ -31,6 +32,7 @@ type Registration = FullRegistration & {
 type Tab = "pending" | "approved" | "rejected" | "all";
 type Section =
   | "dashboard"
+  | "analytics"
   | "registrations"
   | "members"
   | "member-profile"
@@ -203,6 +205,7 @@ const Admin = () => {
         </div>
         <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
           <SidebarItem icon={<LayoutDashboard className="size-4" />} active={section === "dashboard"} label="Dashboard" onClick={() => setSection("dashboard")} />
+          <SidebarItem icon={<BarChart3 className="size-4" />} active={section === "analytics"} label="Analytics" onClick={() => setSection("analytics")} />
           <SidebarItem icon={<Users className="size-4" />} active={section === "registrations"} label={t.admin.tabs.registrations} onClick={() => setSection("registrations")} />
           {(isAdmin || roles.some(r => ["savings_officer","loan_officer","cashier","maker","checker"].includes(r))) && (
             <SidebarItem icon={<UserCircle2 className="size-4" />} active={section === "members"} label="Members" onClick={() => setSection("members")} />
@@ -255,6 +258,7 @@ const Admin = () => {
                 {section === "registrations" ? t.admin.title
                   : section === "staff" ? t.admin.staffMgmt
                   : section === "dashboard" ? "Dashboard"
+                  : section === "analytics" ? "Analytics & Insights"
                   : section === "members" ? "Members"
                   : section === "member-profile" ? "Member Profile (360°)"
                   : section === "payments" ? "Member Payments"
@@ -268,6 +272,7 @@ const Admin = () => {
                 {section === "registrations" ? t.admin.subtitle
                   : section === "staff" ? t.admin.staffMgmtDesc
                   : section === "dashboard" ? "Overview of SACCO performance"
+                  : section === "analytics" ? "KPIs · trends · portfolio · overdues · export PDF/Excel/CSV"
                   : section === "members" ? "Manage member accounts"
                   : section === "member-profile" ? "Full transaction history · download as PDF or Excel"
                   : section === "payments" ? "Bank transfers · registration fees · monthly contributions"
@@ -291,6 +296,7 @@ const Admin = () => {
         <div className="lg:hidden border-b bg-card px-3 py-2 flex gap-1 overflow-x-auto">
           {([
             ["dashboard","Dashboard"],
+            ["analytics","Analytics"],
             ["registrations", t.admin.tabs.registrations],
             ["members","Members"],
             ["member-profile","Profile 360"],
@@ -311,6 +317,7 @@ const Admin = () => {
 
         <main className="flex-1 p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
           {section === "dashboard" && <DashboardModule />}
+          {section === "analytics" && <AnalyticsDashboard />}
           {section === "members" && <MembersModule />}
           {section === "member-profile" && <MemberProfileModule />}
           {section === "payments" && <PaymentsModule />}

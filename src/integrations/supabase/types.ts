@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          entity: string | null
+          entity_id: string | null
+          id: string
+          payload: Json | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          payload?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+          payload?: Json | null
+        }
+        Relationships: []
+      }
       gl_accounts: {
         Row: {
           active: boolean
@@ -129,6 +162,7 @@ export type Database = {
       loan_applications: {
         Row: {
           application_number: string
+          approval_level: string
           approved_at: string | null
           approved_by: string | null
           collateral_motor_chassis: string | null
@@ -160,6 +194,7 @@ export type Database = {
           manager_name: string | null
           mandatory_savings: number
           member_id: string
+          member_signature_url: string | null
           monthly_income: number | null
           monthly_installment: number
           net_to_member: number
@@ -180,6 +215,7 @@ export type Database = {
         }
         Insert: {
           application_number: string
+          approval_level?: string
           approved_at?: string | null
           approved_by?: string | null
           collateral_motor_chassis?: string | null
@@ -211,6 +247,7 @@ export type Database = {
           manager_name?: string | null
           mandatory_savings?: number
           member_id: string
+          member_signature_url?: string | null
           monthly_income?: number | null
           monthly_installment?: number
           net_to_member?: number
@@ -231,6 +268,7 @@ export type Database = {
         }
         Update: {
           application_number?: string
+          approval_level?: string
           approved_at?: string | null
           approved_by?: string | null
           collateral_motor_chassis?: string | null
@@ -262,6 +300,7 @@ export type Database = {
           manager_name?: string | null
           mandatory_savings?: number
           member_id?: string
+          member_signature_url?: string | null
           monthly_income?: number | null
           monthly_installment?: number
           net_to_member?: number
@@ -279,6 +318,39 @@ export type Database = {
           witness_1?: string | null
           witness_2?: string | null
           witness_3?: string | null
+        }
+        Relationships: []
+      }
+      loan_approval_steps: {
+        Row: {
+          application_id: string
+          comment: string | null
+          decided_at: string
+          decided_by: string | null
+          decision: string
+          id: string
+          level: string
+          signature_data_url: string | null
+        }
+        Insert: {
+          application_id: string
+          comment?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision: string
+          id?: string
+          level: string
+          signature_data_url?: string | null
+        }
+        Update: {
+          application_id?: string
+          comment?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision?: string
+          id?: string
+          level?: string
+          signature_data_url?: string | null
         }
         Relationships: []
       }
@@ -427,37 +499,49 @@ export type Database = {
       loan_schedule: {
         Row: {
           balance_after: number
+          cumulative_interest: number
+          days_late: number
           due_date: string
+          extra_payment: number
           id: string
           installment_amount: number
           installment_no: number
           interest_portion: number
           loan_id: string
           paid_at: string | null
+          penalty: number
           principal_portion: number
           status: string
         }
         Insert: {
           balance_after: number
+          cumulative_interest?: number
+          days_late?: number
           due_date: string
+          extra_payment?: number
           id?: string
           installment_amount: number
           installment_no: number
           interest_portion: number
           loan_id: string
           paid_at?: string | null
+          penalty?: number
           principal_portion: number
           status?: string
         }
         Update: {
           balance_after?: number
+          cumulative_interest?: number
+          days_late?: number
           due_date?: string
+          extra_payment?: number
           id?: string
           installment_amount?: number
           installment_no?: number
           interest_portion?: number
           loan_id?: string
           paid_at?: string | null
+          penalty?: number
           principal_portion?: number
           status?: string
         }
@@ -838,6 +922,7 @@ export type Database = {
           registration_fee: number
           savings_annual_rate: number
           savings_tax_rate: number
+          savings_voluntary_rate: number
           share_contribution: number
           updated_at: string
         }
@@ -855,6 +940,7 @@ export type Database = {
           registration_fee?: number
           savings_annual_rate?: number
           savings_tax_rate?: number
+          savings_voluntary_rate?: number
           share_contribution?: number
           updated_at?: string
         }
@@ -872,6 +958,7 @@ export type Database = {
           registration_fee?: number
           savings_annual_rate?: number
           savings_tax_rate?: number
+          savings_voluntary_rate?: number
           share_contribution?: number
           updated_at?: string
         }
@@ -1229,6 +1316,7 @@ export type Database = {
         }[]
       }
       member_has_6_months: { Args: { _member_id: string }; Returns: boolean }
+      savings_rate_for: { Args: { _product: string }; Returns: number }
       submit_registration: {
         Args: { payload: Json }
         Returns: {
@@ -1250,6 +1338,7 @@ export type Database = {
         | "loan_officer"
         | "savings_officer"
       registration_status: "pending" | "approved" | "rejected"
+      savings_product: "mandatory" | "voluntary" | "regular"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1390,6 +1479,7 @@ export const Constants = {
         "savings_officer",
       ],
       registration_status: ["pending", "approved", "rejected"],
+      savings_product: ["mandatory", "voluntary", "regular"],
     },
   },
 } as const
