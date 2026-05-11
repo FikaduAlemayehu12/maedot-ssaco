@@ -434,6 +434,13 @@ export type Database = {
             foreignKeyName: "loan_guarantors_guarantor_member_id_fkey"
             columns: ["guarantor_member_id"]
             isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "loan_guarantors_guarantor_member_id_fkey"
+            columns: ["guarantor_member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -612,6 +619,13 @@ export type Database = {
             foreignKeyName: "loans_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "loans_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
@@ -682,6 +696,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "member_payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["member_id"]
+          },
           {
             foreignKeyName: "member_payments_member_id_fkey"
             columns: ["member_id"]
@@ -1006,10 +1027,71 @@ export type Database = {
             foreignKeyName: "savings_accounts_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "savings_accounts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
             referencedRelation: "members"
             referencedColumns: ["id"]
           },
         ]
+      }
+      savings_cycles: {
+        Row: {
+          account_id: string
+          closing_balance: number
+          gross_interest: number
+          id: string
+          member_id: string
+          monthly_breakdown: Json
+          net_interest: number
+          opening_balance: number
+          period_end: string
+          period_start: string
+          posted_at: string
+          posted_by: string | null
+          product: string
+          rate: number
+          tax: number
+        }
+        Insert: {
+          account_id: string
+          closing_balance?: number
+          gross_interest?: number
+          id?: string
+          member_id: string
+          monthly_breakdown?: Json
+          net_interest?: number
+          opening_balance?: number
+          period_end: string
+          period_start: string
+          posted_at?: string
+          posted_by?: string | null
+          product: string
+          rate: number
+          tax?: number
+        }
+        Update: {
+          account_id?: string
+          closing_balance?: number
+          gross_interest?: number
+          id?: string
+          member_id?: string
+          monthly_breakdown?: Json
+          net_interest?: number
+          opening_balance?: number
+          period_end?: string
+          period_start?: string
+          posted_at?: string
+          posted_by?: string | null
+          product?: string
+          rate?: number
+          tax?: number
+        }
+        Relationships: []
       }
       savings_interest_accruals: {
         Row: {
@@ -1049,6 +1131,13 @@ export type Database = {
           tax?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "savings_interest_accruals_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["account_id"]
+          },
           {
             foreignKeyName: "savings_interest_accruals_account_id_fkey"
             columns: ["account_id"]
@@ -1100,6 +1189,13 @@ export type Database = {
             foreignKeyName: "savings_transactions_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "savings_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
             referencedRelation: "savings_accounts"
             referencedColumns: ["id"]
           },
@@ -1125,6 +1221,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "share_capital_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["member_id"]
+          },
           {
             foreignKeyName: "share_capital_member_id_fkey"
             columns: ["member_id"]
@@ -1166,6 +1269,13 @@ export type Database = {
           share_balance?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "share_dividends_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_savings_ledger"
+            referencedColumns: ["member_id"]
+          },
           {
             foreignKeyName: "share_dividends_member_id_fkey"
             columns: ["member_id"]
@@ -1273,9 +1383,56 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      member_savings_ledger: {
+        Row: {
+          account_id: string | null
+          account_number: string | null
+          amount: number | null
+          balance: number | null
+          full_name: string | null
+          member_id: string | null
+          member_number: string | null
+          note: string | null
+          posted_at: string | null
+          product: string | null
+          running_balance: number | null
+          txn_id: string | null
+          txn_type: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      accrue_account_cycle: {
+        Args: {
+          _account_id: string
+          _period_end: string
+          _period_start: string
+        }
+        Returns: {
+          account_id: string
+          closing_balance: number
+          gross_interest: number
+          id: string
+          member_id: string
+          monthly_breakdown: Json
+          net_interest: number
+          opening_balance: number
+          period_end: string
+          period_start: string
+          posted_at: string
+          posted_by: string | null
+          product: string
+          rate: number
+          tax: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "savings_cycles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       accrue_monthly_savings_interest: {
         Args: { _period?: string }
         Returns: {
@@ -1298,6 +1455,14 @@ export type Database = {
         Returns: number
       }
       eligible_loan_max: { Args: { _member_id: string }; Returns: number }
+      eth_cycle_window: {
+        Args: { _d: string }
+        Returns: {
+          label: string
+          period_end: string
+          period_start: string
+        }[]
+      }
       generate_loan_schedule: { Args: { _loan_id: string }; Returns: number }
       generate_referral_code: { Args: never; Returns: string }
       has_role: {
@@ -1316,6 +1481,13 @@ export type Database = {
         }[]
       }
       member_has_6_months: { Args: { _member_id: string }; Returns: boolean }
+      run_savings_cycle: {
+        Args: { _period_end: string; _period_start: string }
+        Returns: {
+          processed: number
+          total_net: number
+        }[]
+      }
       savings_rate_for: { Args: { _product: string }; Returns: number }
       submit_registration: {
         Args: { payload: Json }
