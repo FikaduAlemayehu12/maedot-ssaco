@@ -1,0 +1,1 @@
+ALTER VIEW public.member_savings_ledger SET (security_invoker = true);

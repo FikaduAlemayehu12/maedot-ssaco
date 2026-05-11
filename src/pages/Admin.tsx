@@ -23,6 +23,7 @@ import {
   PaymentsModule, DividendsModule, LoanApplicationsModule, MemberProfileModule,
 } from "@/components/staff/Modules";
 import { AnalyticsDashboard } from "@/components/staff/AnalyticsDashboard";
+import { SavingsLedgerModule } from "@/components/staff/SavingsLedger";
 
 type Registration = FullRegistration & {
   status: "pending" | "approved" | "rejected";
@@ -38,6 +39,7 @@ type Section =
   | "member-profile"
   | "payments"
   | "savings"
+  | "savings-ledger"
   | "loan-applications"
   | "loans"
   | "dividends"
@@ -219,6 +221,9 @@ const Admin = () => {
           {(isAdmin || roles.includes("savings_officer") || roles.includes("cashier") || roles.includes("finance_officer")) && (
             <SidebarItem icon={<Wallet className="size-4" />} active={section === "savings"} label="Savings" onClick={() => setSection("savings")} />
           )}
+          {(isAdmin || roles.includes("savings_officer") || roles.includes("finance_officer")) && (
+            <SidebarItem icon={<BookOpen className="size-4" />} active={section === "savings-ledger"} label="Savings Ledger · Cycles" onClick={() => setSection("savings-ledger")} />
+          )}
           {(isAdmin || roles.includes("loan_officer") || roles.includes("finance_officer") || roles.includes("cashier")) && (
             <SidebarItem icon={<HandCoins className="size-4" />} active={section === "loans"} label="Loans" onClick={() => setSection("loans")} />
           )}
@@ -263,6 +268,7 @@ const Admin = () => {
                   : section === "member-profile" ? "Member Profile (360°)"
                   : section === "payments" ? "Member Payments"
                   : section === "savings" ? "Savings"
+                  : section === "savings-ledger" ? "Savings Ledger · 6-month cycles"
                   : section === "loans" ? "Loans"
                   : section === "loan-applications" ? "የብድር ማመልከቻ · Loan Applications"
                   : section === "dividends" ? "Share Dividends"
@@ -277,6 +283,7 @@ const Admin = () => {
                   : section === "member-profile" ? "Full transaction history · download as PDF or Excel"
                   : section === "payments" ? "Bank transfers · registration fees · monthly contributions"
                   : section === "savings" ? "Savings accounts & transactions"
+                  : section === "savings-ledger" ? "Auto monthly simple interest · 5% tax · Ethiopian ሐምሌ–ታህሳስ / ጥር–ሰኔ cycles · bulk import · Excel/CSV/PDF"
                   : section === "loans" ? "Loan applications & repayments"
                   : section === "loan-applications" ? "Dynamic Amharic loan application · auto-rate · 25% mandatory savings · 2% upfront · 30% late penalty"
                   : section === "dividends" ? "Annual share dividend distribution"
@@ -302,6 +309,7 @@ const Admin = () => {
             ["member-profile","Profile 360"],
             ["payments","Payments"],
             ["savings","Savings"],
+            ["savings-ledger","Ledger"],
             ["loans","Loans"],
             ["loan-applications","Loan Apps"],
             ["dividends","Dividends"],
@@ -322,6 +330,7 @@ const Admin = () => {
           {section === "member-profile" && <MemberProfileModule />}
           {section === "payments" && <PaymentsModule />}
           {section === "savings" && <SavingsModule />}
+          {section === "savings-ledger" && <SavingsLedgerModule />}
           {section === "loans" && <LoansModule />}
           {section === "loan-applications" && <LoanApplicationsModule />}
           {section === "dividends" && <DividendsModule />}
