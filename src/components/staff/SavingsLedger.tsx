@@ -260,54 +260,57 @@ export const SavingsLedgerModule = () => {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { cellDates: true });
     let sheetsOk = 0, sheetsFail = 0, txnsOk = 0, txnsDup = 0;
-    const start = new Date(importStart || "2015-07-01");
+    let cyclesOk = 0;
 
-    const norm = (s: any) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-    const isMonth = (s: string) => /(month|date|ወር|ቀን|ዓመት)/i.test(s);
-    const isReceipt = (s: string) => /(receipt|ደረሰኝ|ቁጥር)/i.test(s) && !/account/i.test(s);
-    const isSavings = (s: string) => /(saving|deposit|ቁጠባ|መዋጮ|amount)/i.test(s) && !/total|balance|ድምር|ክምችት/i.test(s);
-    const isBalance = (s: string) => /(balance|ድምር|total)/i.test(s) && !/interest|ወለድ|accum/i.test(s);
-    const isInterest = (s: string) => /(interest|ወለድ)/i.test(s) && !/accum|ክምችት/i.test(s);
-    const isAccum = (s: string) => /(accumulat|ክምችት|with interest|ጨምሮ)/i.test(s);
+    // Ethiopian month → (gregorian year offset, gregorian month, day)
+    const ETH: Record<string, [number, number, number]> = {
+      "መስከረም":[7,9,11], "ጥቅምት":[7,10,11], "ህዳር":[7,11,10], "ሕዳር":[7,11,10],
+      "ታህሳስ":[7,12,10], "ታኅሳስ":[7,12,10],
+      "ጥር":[8,1,9], "የካቲት":[8,2,8], "መጋቢት":[8,3,10],
+      "ሚያዚያ":[8,4,9], "ሚያዝያ":[8,4,9], "ግንቦት":[8,5,9],
+      "ሰኔ":[8,6,8], "ሃመሌ":[8,7,8], "ሐምሌ":[8,7,8], "ሓምሌ":[8,7,8],
+      "ነሀሴ":[8,8,7], "ነሐሴ":[8,8,7], "ጳጉሜን":[8,9,6],
+    };
+    const parseEth = (s: string): { date: string; year: number; midx: number } | null => {
+      if (!s) return null;
+      const m = String(s).match(/([\u1200-\u137F]+)\s*(\d{4})/);
+      if (!m) return null;
+      const name = m[1].trim();
+      const yr = parseInt(m[2], 10);
+      const g = ETH[name];
+      if (!g) return null;
+      const [yo, gm, gd] = g;
+      const midx = Object.keys(ETH).indexOf(name); // not used
+      const d = new Date(Date.UTC(yr + yo, gm - 1, gd));
+      return { date: d.toISOString().slice(0, 10), year: yr, midx };
+    };
+    const cycleWindow = (yr: number, span: number): { ps: string; pe: string; label: string } => {
+      // span 6 = ሐምሌ–ታህሳስ; span 12 (12-month report) ends in ሰኔ of year yr
+      if (span === 6) {
+        const ps = new Date(Date.UTC(yr - 1 + 8, 6, 8)).toISOString().slice(0,10);
+        const pe = new Date(Date.UTC(yr - 1 + 7, 11, 10)).toISOString().slice(0,10);
+        return { ps, pe, label: `ሐምሌ ${yr-1} – ታህሳስ ${yr-1}` };
+      }
+      const ps = new Date(Date.UTC(yr + 8, 0, 9)).toISOString().slice(0,10);
+      const pe = new Date(Date.UTC(yr + 8, 5, 8)).toISOString().slice(0,10);
+      return { ps, pe, label: `ጥር ${yr} – ሰኔ ${yr}` };
+    };
 
     for (const sheetName of wb.SheetNames) {
+      // Skip non-numeric sheets (e.g. "jun 2017" roster/index sheets)
+      if (!/^\d{4,7}$/.test(sheetName)) continue;
       const ws = wb.Sheets[sheetName];
       const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
       if (!aoa.length) { sheetsFail++; continue; }
 
-      // Find header row by scanning first 15 rows
-      let headerIdx = -1;
-      let cols: Record<string, number> = {};
-      for (let i = 0; i < Math.min(aoa.length, 15); i++) {
-        const row = aoa[i].map(norm);
-        const c: Record<string, number> = {};
-        row.forEach((cell, j) => {
-          if (!cell) return;
-          if (c.month === undefined && isMonth(cell)) c.month = j;
-          else if (c.receipt === undefined && isReceipt(cell)) c.receipt = j;
-          else if (c.savings === undefined && isSavings(cell)) c.savings = j;
-          else if (c.balance === undefined && isBalance(cell)) c.balance = j;
-          else if (c.interest === undefined && isInterest(cell)) c.interest = j;
-          else if (c.accum === undefined && isAccum(cell)) c.accum = j;
-        });
-        if (c.savings !== undefined || c.balance !== undefined) { headerIdx = i; cols = c; break; }
-      }
-      if (headerIdx < 0) { sheetsFail++; continue; }
-
-      // Member number = sheet name digits, fallback to first numeric-looking cell above header
-      const digits = sheetName.match(/\d+/)?.[0] ?? sheetName;
-      const member_number = digits.padStart(5, "0");
-
-      // Member full name = look for a cell above header with letters & not a label
+      const member_number = sheetName.replace(/^0+/, "").padStart(5, "0");
+      // Member full name = first non-empty cell of row 0 that contains Amharic/Latin letters
       let full_name = "";
-      for (let i = 0; i < headerIdx; i++) {
-        for (const cell of aoa[i]) {
-          const v = String(cell ?? "").trim();
-          if (v.length > 2 && /[\p{L}]/u.test(v) && !/(member|name|ስም|number|ቁጥር|month|ወር)/i.test(v)) {
-            full_name = v; break;
-          }
+      for (const cell of aoa[0] || []) {
+        const v = String(cell ?? "").trim();
+        if (v.length > 2 && /[\p{L}]/u.test(v) && !/(ወር|ቁጥር|ብር|ወለድ|month|name)/i.test(v)) {
+          full_name = v; break;
         }
-        if (full_name) break;
       }
       if (!full_name) full_name = `Member ${member_number}`;
 
@@ -329,74 +332,101 @@ export const SavingsLedgerModule = () => {
         acc = created;
       }
 
-      // Pull existing txns for dedupe (by note token containing receipt# or by date+amount)
+      // Existing transactions for dedupe
       const { data: existing } = await supabase.from("savings_transactions")
-        .select("amount,posted_at,note").eq("account_id", acc.id);
-      const seen = new Set((existing ?? []).map(t => `${t.posted_at?.slice(0,10)}|${Number(t.amount)}|${t.note ?? ""}`));
+        .select("amount,posted_at,txn_type").eq("account_id", acc.id);
+      const seen = new Set((existing ?? []).map(t => `${t.posted_at?.slice(0,10)}|${Number(t.amount)}|${t.txn_type}`));
+      const { data: existingCycles } = await supabase.from("savings_cycles")
+        .select("period_start").eq("account_id", acc.id);
+      const cseen = new Set((existingCycles ?? []).map(c => c.period_start));
 
-      let running = Number(acc.balance) || 0;
-      const inserts: any[] = [];
-      let monthIdx = 0;
+      type Event = { date: string; type: "deposit" | "interest"; amount: number; receipt?: string | null; note: string };
+      const events: Event[] = [];
+      const cycleRows: any[] = [];
+      let pendingGross: { yr: number; span: number; gross: number } | null = null;
+      let pendingTax: number | null = null;
+      let openBal = Number(acc.balance) || 0;
 
-      for (let i = headerIdx + 1; i < aoa.length; i++) {
-        const row = aoa[i];
-        if (!row || row.every(c => String(c ?? "").trim() === "")) continue;
+      for (let i = 1; i < aoa.length; i++) {
+        const row = aoa[i] || [];
+        const c0 = row[0], c1 = row[1], c2 = row[2], c3 = row[3], c4 = row[4], c5 = row[5], c6 = row[6];
+        const s1 = String(c1 ?? "").trim();
+        const s3 = String(c3 ?? "").trim();
+        const numC1 = Number(c1);
 
-        const num = (idx?: number) => {
-          if (idx === undefined) return 0;
-          const v = String(row[idx] ?? "").replace(/[, ]/g, "");
-          const n = Number(v);
-          return isFinite(n) ? n : 0;
-        };
-        const txt = (idx?: number) => idx === undefined ? "" : String(row[idx] ?? "").trim();
+        // Year header row
+        if (!s1.match(/[^\d]/) && numC1 > 2000 && numC1 < 2030 && !c2 && !c3) continue;
 
-        const savings = num(cols.savings);
-        const interest = num(cols.interest);
-        if (!savings && !interest) continue;
-
-        // Date: parse month cell, else synthesize sequential month from importStart
-        let when: Date;
-        const rawMonth = txt(cols.month);
-        const parsed = rawMonth ? new Date(rawMonth) : null;
-        if (parsed && !isNaN(parsed.getTime())) when = parsed;
-        else { when = new Date(start); when.setMonth(when.getMonth() + monthIdx); }
-        monthIdx++;
-        const isoDate = when.toISOString().slice(0, 10);
-        const receipt = txt(cols.receipt);
-        const note = `History · ${rawMonth || isoDate}${receipt ? ` · receipt ${receipt}` : ""}`;
-
-        if (savings > 0) {
-          const key = `${isoDate}|${savings}|${note}`;
-          if (!seen.has(key)) {
-            running += savings;
-            inserts.push({ account_id: acc.id, txn_type: "deposit", amount: savings,
-              running_balance: running, note, posted_at: when.toISOString(), reference: receipt || null });
-            seen.add(key);
-          } else txnsDup++;
+        // Cycle gross row
+        const gMatch = s3.match(/የ\s*(\d{4})\s*የ\s*(\d+)\s*ወር\s*ወለድ/);
+        if (gMatch && typeof c5 === "number") {
+          pendingGross = { yr: parseInt(gMatch[1], 10), span: parseInt(gMatch[2], 10), gross: Number(c5) };
+          continue;
         }
-        if (interest > 0) {
-          const inote = `History interest · ${rawMonth || isoDate}`;
-          const key = `${isoDate}|${interest}|${inote}`;
-          if (!seen.has(key)) {
-            running += interest;
-            inserts.push({ account_id: acc.id, txn_type: "interest", amount: interest,
-              running_balance: running, note: inote, posted_at: when.toISOString() });
-            seen.add(key);
-          } else txnsDup++;
+        if (s3.toLowerCase() === "tax" && typeof c4 === "number") { pendingTax = Number(c4); continue; }
+
+        // Cycle close summary
+        if (String(c0 ?? "").includes("አጠቃላይ") && typeof c6 === "number" && pendingGross) {
+          const closing = Number(c6);
+          const { yr, span, gross } = pendingGross;
+          const tax = pendingTax ?? +(gross * 0.05).toFixed(4);
+          const net = +(gross - tax).toFixed(4);
+          const { ps, pe, label } = cycleWindow(yr, span);
+          events.push({ date: pe, type: "interest", amount: net, note: `Cycle interest ${label} (gross ${gross.toFixed(2)}, tax ${tax.toFixed(2)})` });
+          if (!cseen.has(ps)) {
+            cycleRows.push({
+              account_id: acc.id, member_id: m.id, period_start: ps, period_end: pe,
+              product: "regular", rate: 0.07, opening_balance: openBal,
+              gross_interest: gross, tax, net_interest: net,
+              closing_balance: closing, monthly_breakdown: [],
+            });
+            cseen.add(ps);
+          }
+          openBal = closing;
+          pendingGross = null; pendingTax = null;
+          continue;
+        }
+
+        // Deposit row
+        const parsed = parseEth(s1);
+        if (parsed) {
+          const amount = typeof c3 === "number" ? Number(c3) : Number(String(c3 ?? "").replace(/[, ]/g,"")) || 0;
+          if (amount > 0) {
+            const receipt = c2 != null && c2 !== "" ? String(c2) : null;
+            events.push({ date: parsed.date, type: "deposit", amount, receipt, note: s1 });
+          }
         }
       }
 
-      // Batch insert
+      events.sort((a, b) => a.date.localeCompare(b.date));
+      let running = Number(acc.balance) || 0;
+      const inserts: any[] = [];
+      for (const ev of events) {
+        const key = `${ev.date}|${ev.amount}|${ev.type}`;
+        if (seen.has(key)) { txnsDup++; continue; }
+        seen.add(key);
+        running = +(running + ev.amount).toFixed(4);
+        inserts.push({
+          account_id: acc.id, txn_type: ev.type, amount: ev.amount,
+          running_balance: running, note: ev.note,
+          posted_at: new Date(ev.date + "T12:00:00Z").toISOString(),
+          reference: ev.receipt ?? null,
+        });
+      }
       if (inserts.length) {
         const { error: ei } = await supabase.from("savings_transactions").insert(inserts);
         if (ei) { sheetsFail++; continue; }
         txnsOk += inserts.length;
       }
-      await supabase.from("savings_accounts").update({ balance: running }).eq("id", acc.id);
+      if (cycleRows.length) {
+        const { error: ec2 } = await supabase.from("savings_cycles").insert(cycleRows);
+        if (!ec2) cyclesOk += cycleRows.length;
+      }
+      await supabase.from("savings_accounts").update({ balance: running, updated_at: new Date().toISOString() }).eq("id", acc.id);
       sheetsOk++;
     }
     toast({ title: "Smart import complete",
-      description: `${sheetsOk} member sheets · ${txnsOk} new txns · ${txnsDup} duplicates skipped · ${sheetsFail} failed` });
+      description: `${sheetsOk} members · ${txnsOk} txns · ${cyclesOk} cycles · ${txnsDup} duplicates · ${sheetsFail} failed` });
     load();
   };
 

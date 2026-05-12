@@ -1496,6 +1496,7 @@ export type Database = {
           customer_number: string
         }[]
       }
+      sync_savings_balances: { Args: never; Returns: number }
     }
     Enums: {
       account_type: "saving" | "cheque" | "mobile_wallet"
