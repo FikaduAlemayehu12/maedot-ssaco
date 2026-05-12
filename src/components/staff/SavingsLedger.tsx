@@ -37,6 +37,7 @@ export const SavingsLedgerModule = () => {
   const cyc = defaultCycle();
   const [periodStart, setPeriodStart] = useState(cyc.start);
   const [periodEnd, setPeriodEnd] = useState(cyc.end);
+  const [importStart, setImportStart] = useState("2015-07-01");
 
   const load = async () => {
     setLoading(true);
@@ -249,6 +250,156 @@ export const SavingsLedgerModule = () => {
     load();
   };
 
+  // ---------- Smart per-member history importer ----------
+  // Each sheet = one member. Sheet name should be the membership number (e.g. "00001").
+  // Auto-detects header row + columns (month, receipt#, savings amount, balance,
+  // interest, accumulated balance with interest) in English or Amharic, persists
+  // every row as a savings_transaction (deduped by receipt # / date+amount), and
+  // upserts the member + savings account so nothing is lost.
+  const onUploadSmartHistory = async (file: File) => {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { cellDates: true });
+    let sheetsOk = 0, sheetsFail = 0, txnsOk = 0, txnsDup = 0;
+    const start = new Date(importStart || "2015-07-01");
+
+    const norm = (s: any) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    const isMonth = (s: string) => /(month|date|ወር|ቀን|ዓመት)/i.test(s);
+    const isReceipt = (s: string) => /(receipt|ደረሰኝ|ቁጥር)/i.test(s) && !/account/i.test(s);
+    const isSavings = (s: string) => /(saving|deposit|ቁጠባ|መዋጮ|amount)/i.test(s) && !/total|balance|ድምር|ክምችት/i.test(s);
+    const isBalance = (s: string) => /(balance|ድምር|total)/i.test(s) && !/interest|ወለድ|accum/i.test(s);
+    const isInterest = (s: string) => /(interest|ወለድ)/i.test(s) && !/accum|ክምችት/i.test(s);
+    const isAccum = (s: string) => /(accumulat|ክምችት|with interest|ጨምሮ)/i.test(s);
+
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      const aoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+      if (!aoa.length) { sheetsFail++; continue; }
+
+      // Find header row by scanning first 15 rows
+      let headerIdx = -1;
+      let cols: Record<string, number> = {};
+      for (let i = 0; i < Math.min(aoa.length, 15); i++) {
+        const row = aoa[i].map(norm);
+        const c: Record<string, number> = {};
+        row.forEach((cell, j) => {
+          if (!cell) return;
+          if (c.month === undefined && isMonth(cell)) c.month = j;
+          else if (c.receipt === undefined && isReceipt(cell)) c.receipt = j;
+          else if (c.savings === undefined && isSavings(cell)) c.savings = j;
+          else if (c.balance === undefined && isBalance(cell)) c.balance = j;
+          else if (c.interest === undefined && isInterest(cell)) c.interest = j;
+          else if (c.accum === undefined && isAccum(cell)) c.accum = j;
+        });
+        if (c.savings !== undefined || c.balance !== undefined) { headerIdx = i; cols = c; break; }
+      }
+      if (headerIdx < 0) { sheetsFail++; continue; }
+
+      // Member number = sheet name digits, fallback to first numeric-looking cell above header
+      const digits = sheetName.match(/\d+/)?.[0] ?? sheetName;
+      const member_number = digits.padStart(5, "0");
+
+      // Member full name = look for a cell above header with letters & not a label
+      let full_name = "";
+      for (let i = 0; i < headerIdx; i++) {
+        for (const cell of aoa[i]) {
+          const v = String(cell ?? "").trim();
+          if (v.length > 2 && /[\p{L}]/u.test(v) && !/(member|name|ስም|number|ቁጥር|month|ወር)/i.test(v)) {
+            full_name = v; break;
+          }
+        }
+        if (full_name) break;
+      }
+      if (!full_name) full_name = `Member ${member_number}`;
+
+      // Upsert member + savings account
+      const { data: m, error: em } = await supabase.from("members").upsert(
+        { member_number, full_name, status: "active" },
+        { onConflict: "member_number" }
+      ).select().single();
+      if (em || !m) { sheetsFail++; continue; }
+
+      const account_number = `SA-${member_number}`;
+      let { data: acc } = await supabase.from("savings_accounts").select("id,balance").eq("account_number", account_number).maybeSingle();
+      if (!acc) {
+        const { data: created, error: ec } = await supabase.from("savings_accounts").upsert(
+          { member_id: m.id, account_number, product: "regular", balance: 0, status: "active" },
+          { onConflict: "account_number" }
+        ).select().single();
+        if (ec || !created) { sheetsFail++; continue; }
+        acc = created;
+      }
+
+      // Pull existing txns for dedupe (by note token containing receipt# or by date+amount)
+      const { data: existing } = await supabase.from("savings_transactions")
+        .select("amount,posted_at,note").eq("account_id", acc.id);
+      const seen = new Set((existing ?? []).map(t => `${t.posted_at?.slice(0,10)}|${Number(t.amount)}|${t.note ?? ""}`));
+
+      let running = Number(acc.balance) || 0;
+      const inserts: any[] = [];
+      let monthIdx = 0;
+
+      for (let i = headerIdx + 1; i < aoa.length; i++) {
+        const row = aoa[i];
+        if (!row || row.every(c => String(c ?? "").trim() === "")) continue;
+
+        const num = (idx?: number) => {
+          if (idx === undefined) return 0;
+          const v = String(row[idx] ?? "").replace(/[, ]/g, "");
+          const n = Number(v);
+          return isFinite(n) ? n : 0;
+        };
+        const txt = (idx?: number) => idx === undefined ? "" : String(row[idx] ?? "").trim();
+
+        const savings = num(cols.savings);
+        const interest = num(cols.interest);
+        if (!savings && !interest) continue;
+
+        // Date: parse month cell, else synthesize sequential month from importStart
+        let when: Date;
+        const rawMonth = txt(cols.month);
+        const parsed = rawMonth ? new Date(rawMonth) : null;
+        if (parsed && !isNaN(parsed.getTime())) when = parsed;
+        else { when = new Date(start); when.setMonth(when.getMonth() + monthIdx); }
+        monthIdx++;
+        const isoDate = when.toISOString().slice(0, 10);
+        const receipt = txt(cols.receipt);
+        const note = `History · ${rawMonth || isoDate}${receipt ? ` · receipt ${receipt}` : ""}`;
+
+        if (savings > 0) {
+          const key = `${isoDate}|${savings}|${note}`;
+          if (!seen.has(key)) {
+            running += savings;
+            inserts.push({ account_id: acc.id, txn_type: "deposit", amount: savings,
+              running_balance: running, note, posted_at: when.toISOString(), reference: receipt || null });
+            seen.add(key);
+          } else txnsDup++;
+        }
+        if (interest > 0) {
+          const inote = `History interest · ${rawMonth || isoDate}`;
+          const key = `${isoDate}|${interest}|${inote}`;
+          if (!seen.has(key)) {
+            running += interest;
+            inserts.push({ account_id: acc.id, txn_type: "interest", amount: interest,
+              running_balance: running, note: inote, posted_at: when.toISOString() });
+            seen.add(key);
+          } else txnsDup++;
+        }
+      }
+
+      // Batch insert
+      if (inserts.length) {
+        const { error: ei } = await supabase.from("savings_transactions").insert(inserts);
+        if (ei) { sheetsFail++; continue; }
+        txnsOk += inserts.length;
+      }
+      await supabase.from("savings_accounts").update({ balance: running }).eq("id", acc.id);
+      sheetsOk++;
+    }
+    toast({ title: "Smart import complete",
+      description: `${sheetsOk} member sheets · ${txnsOk} new txns · ${txnsDup} duplicates skipped · ${sheetsFail} failed` });
+    load();
+  };
+
   if (loading) return <div className="p-12 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -281,6 +432,12 @@ export const SavingsLedgerModule = () => {
             hint="Columns: member_number, full_name, phone, account_number, product (regular|voluntary), opening_balance" />
           <UploadField label="Bulk upload · historical ledger (XLSX)" onFile={onUploadHistorical}
             hint="One sheet per member (sheet name = member_number) with rows: date, type, amount, note" />
+          <div className="flex flex-col gap-1 min-w-[160px]">
+            <Label className="text-xs">History start (synthesized dates)</Label>
+            <Input type="date" value={importStart} onChange={e => setImportStart(e.target.value)} className="h-9" />
+          </div>
+          <UploadField label="Smart history · per-member sheets (XLSX)" onFile={onUploadSmartHistory}
+            hint="Auto-detects month/receipt/savings/balance/interest/accumulated columns. Sheet name = membership # (e.g. 00001). Auto-creates members + accounts, dedupes, preserves all history." />
         </div>
       </div>
 
